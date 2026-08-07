@@ -79,6 +79,14 @@ export function SnakeGame() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target.isContentEditable
+      ) {
+        return
+      }
       const next = KEY_DIRS[e.key.toLowerCase()]
       if (!next) return
       e.preventDefault()

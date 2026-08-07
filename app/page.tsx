@@ -2,6 +2,7 @@
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { SnakeGame } from "@/components/snake-game"
+import { ChatBot } from "@/components/chatbot"
 import { motion } from "framer-motion"
 import { 
   FaLaptopCode, 
@@ -233,12 +234,11 @@ export default function Home() {
             viewport={{ once: true }}
             className="pixel-border p-8" style={{ backgroundColor: 'var(--background)' }}
           >
-            <p className="text-sm md:text-base leading-relaxed mb-6">
+<p className="text-sm md:text-base leading-relaxed mb-6">
               I'm a passionate technologist who wears many hats in the digital
               world. From crafting elegant web applications to managing complex
               cloud infrastructure, I bring creativity and technical expertise
-              to every project. I'm also a PWD (Person With Disability), and I
-              believe that diversity and inclusion make us stronger.
+              to every project.
             </p>
             <p className="text-sm md:text-base leading-relaxed mb-6 italic">
               "Technology is my weapon — disability is not inability. Through code,
@@ -339,6 +339,8 @@ export default function Home() {
       <footer className="py-8 px-4 text-center text-sm transition-colors duration-300" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', opacity: 0.7 }}>
         <p>© 2026 KENT DARYL M. GILO</p>
       </footer>
+
+      <ChatBot />
     </div>
   )
 }
