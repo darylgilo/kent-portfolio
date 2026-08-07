@@ -1,6 +1,7 @@
 "use client"
 
 import { ThemeToggle } from "@/components/theme-toggle"
+import { SnakeGame } from "@/components/snake-game"
 import { motion } from "framer-motion"
 import { 
   FaLaptopCode, 
@@ -94,7 +95,7 @@ export default function Home() {
             whileTap={{ scale: 0.95 }}
           >
             <a
-              href="#projects"
+              href="#contact"
               className="pixel-btn px-8 py-4 text-sm md:text-base inline-block"
             >
               START GAME_
@@ -328,6 +329,8 @@ export default function Home() {
                 <div className="text-sm">FACEBOOK</div>
               </motion.a>
             </div>
+
+            <SnakeGame />
           </motion.div>
         </div>
       </section>
