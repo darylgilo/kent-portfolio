@@ -3,11 +3,13 @@
 :root {
   --background: #ffffff;
   --foreground: #000000;
+  --progress: #000000;
 }
 
 .dark {
   --background: #000000;
-  --foreground: #ffffff;
+  --foreground: #e5e5e5;
+  --progress: #ffffff;
 }
 
 @theme inline {
