@@ -98,7 +98,7 @@ const INTENTS: Intent[] = [
   {
     keywords: ["disability", "pwd", "inclusion", "diversity", "inspir", "quote"],
     answer:
-      "KENT IS A PWD (PERSON WITH DISABILITY) AND BELIEVES DIVERSITY AND INCLUSION MAKE US STRONGER. HIS MANTRA: \"TECHNOLOGY IS MY WEAPON — DISABILITY IS NOT INABILITY. THROUGH CODE, I CAN BUILD BRIDGES, CREATE SOLUTIONS, AND MOVE MOUNTAINS.\"",
+      "KENT IS A PWD (PERSON WITH DISABILITY) AND BELIEVES DIVERSITY AND INCLUSION MAKE US STRONGER. HIS MANTRA: \"MY DISABILITY MAY SHAPE MY JOURNEY, BUT IT DOES NOT DEFINE MY DESTINATION. WITH TECHNOLOGY AS MY TOOL AND DETERMINATION AS MY STRENGTH, I CAN TURN CHALLENGES INTO POSSIBILITIES AND DREAMS INTO REALITY.\"",
   },
   {
     keywords: ["contact", "email", "reach", "hire", "connect", "message", "work with"],
@@ -170,7 +170,7 @@ function findAnswer(input: string): string {
   return best ? best.answer : FALLBACK
 }
 
-export function ChatBot() {
+export function ChatBot({ variant = "pixel" }: { variant?: "pixel" | "modern" }) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -196,6 +196,121 @@ export function ChatBot() {
       setMessages((prev) => [...prev, { from: "bot", text: findAnswer(trimmed) }])
       setTyping(false)
     }, 600)
+  }
+
+  if (variant === "modern") {
+    return (
+      <>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-14 w-14 items-center justify-center rounded-full text-xl text-white shadow-2xl transition-transform hover:scale-110"
+          style={{
+            position: "fixed",
+            bottom: "1.5rem",
+            right: "1.5rem",
+            background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+          }}
+          aria-label={open ? "Close chatbot" : "Open chatbot"}
+        >
+          {open ? <FaTimes /> : <FaCommentDots />}
+        </button>
+
+        {open && (
+          <div
+            className="w-[calc(100vw-3rem)] max-w-sm flex flex-col overflow-hidden rounded-2xl shadow-2xl"
+            style={{
+              backgroundColor: "var(--card)",
+              border: "1px solid var(--border-color)",
+              height: "60vh",
+              maxHeight: "480px",
+              position: "fixed",
+              bottom: "6rem",
+              right: "1.5rem",
+              zIndex: 50,
+            }}
+          >
+            <div
+              className="p-4 flex items-center gap-3 text-white"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
+            >
+              <div className="text-xl"><FaRobot /></div>
+              <div>
+                <div className="text-xs md:text-sm font-semibold">PORTFOLIO BOT</div>
+                <div className="text-[10px]" style={{ opacity: 0.7 }}>ONLINE_ ASK ME ANYTHING</div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs leading-relaxed">
+              {messages.map((msg, i) => (
+                <div key={i} className={msg.from === "user" ? "flex justify-end" : "flex justify-start"}>
+                  <div
+                    className="px-4 py-2.5 max-w-[85%] whitespace-pre-line break-words rounded-2xl"
+                    style={{
+                      backgroundColor: msg.from === "user" ? "var(--accent)" : "var(--background)",
+                      color: msg.from === "user" ? "#ffffff" : "var(--foreground)",
+                      border: "1px solid var(--border-color)",
+                    }}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {typing && (
+                <div className="flex justify-start">
+                  <div
+                    className="px-4 py-2.5 rounded-2xl animate-type-bar"
+                    style={{ backgroundColor: "var(--background)", border: "1px solid var(--border-color)" }}
+                  >
+                    THINKING_
+                  </div>
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {messages.length <= 1 && (
+              <div className="px-4 pb-3 space-y-2">
+                {QUICK_QUESTIONS.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => handleSend(q)}
+                    className="w-full rounded-full px-4 py-2.5 text-left text-[11px] transition-colors hover:opacity-80"
+                    style={{ backgroundColor: "var(--background)", border: "1px solid var(--border-color)" }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <form
+              className="flex gap-2 p-4"
+              style={{ borderTop: "1px solid var(--border-color)" }}
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSend(input)
+              }}
+            >
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="TYPE A QUESTION..."
+                className="flex-1 min-w-0 rounded-full px-4 py-2.5 text-xs outline-none"
+                style={{ backgroundColor: "var(--background)", border: "1px solid var(--border-color)", color: "var(--foreground)" }}
+              />
+              <button
+                type="submit"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm text-white transition-transform hover:scale-110"
+                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
+                aria-label="Send message"
+              >
+                <FaPaperPlane />
+              </button>
+            </form>
+          </div>
+        )}
+      </>
+    )
   }
 
   return (

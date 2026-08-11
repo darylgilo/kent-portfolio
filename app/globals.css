@@ -4,12 +4,26 @@
   --background: #ffffff;
   --foreground: #000000;
   --progress: #000000;
+  --card: #f8f8f8;
+  --card-hover: #ffffff;
+  --muted: #4b5563;
+  --accent: #2563eb;
+  --accent-2: #06b6d4;
+  --border-color: #e5e7eb;
+  --blob-opacity: 0.35;
 }
 
 .dark {
   --background: #000000;
   --foreground: #e5e5e5;
   --progress: #ffffff;
+  --card: #0d0d0f;
+  --card-hover: #141417;
+  --muted: #9ca3af;
+  --accent: #60a5fa;
+  --accent-2: #22d3ee;
+  --border-color: #26262b;
+  --blob-opacity: 0.3;
 }
 
 @theme inline {
@@ -24,6 +38,10 @@ body {
   font-family: var(--font-pixel), monospace;
   image-rendering: pixelated;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 .pixel-text {
@@ -106,4 +124,27 @@ body {
   background-size: 100% 4px;
   pointer-events: none;
   z-index: 10;
+}
+
+@keyframes blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+
+.animate-blob {
+  animation: blob-float 12s ease-in-out infinite;
+}
+
+@keyframes type-bar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-type-bar {
+  animation: type-bar 0.9s step-end infinite;
+}
+
+.modern-root * {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
 }
