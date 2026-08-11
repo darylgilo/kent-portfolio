@@ -1,9 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { SnakeGame } from "@/components/snake-game"
 import { ChatBot } from "@/components/chatbot"
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { 
   FaLaptopCode, 
   FaServer, 
@@ -11,19 +11,39 @@ import {
   FaPalette, 
   FaPen, 
   FaFilm,
-  FaCoffee,
   FaEnvelope,
   FaGithub,
   FaLinkedin,
   FaFacebook,
   FaChevronDown,
   FaPlay,
-  FaDatabase,
-  FaWindows,
-  FaLinux,
-  FaAws,
-  FaFire
+  FaTimes
 } from "react-icons/fa"
+
+type Project = {
+  name: string
+  description: string
+  image: string
+}
+
+function ProjectImage({ project }: { project: Project }) {
+  const [loaded, setLoaded] = useState(true)
+  return loaded ? (
+    <img
+      src={project.image}
+      alt={project.name}
+      onError={() => setLoaded(false)}
+      className={project.name === "GEOLOCATION APP" ? "w-full max-h-[45vh] object-contain pixel-border mb-4" : "w-full h-auto pixel-border mb-4"}
+    />
+  ) : (
+    <div className="w-full h-48 md:h-64 pixel-border mb-4 flex flex-col items-center justify-center gap-3 text-center px-4" style={{ color: 'var(--foreground)' }}>
+      <span className="text-2xl animate-blink">[NO SCREENSHOT]</span>
+      <span className="text-[10px]" style={{ opacity: 0.6 }}>
+        ADD AN IMAGE LIKE {project.image} IN THE public/projects/ FOLDER
+      </span>
+    </div>
+  )
+}
 
 export default function Home() {
   const skills = [
@@ -52,19 +72,25 @@ export default function Home() {
     { name: "FIREBASE", category: "Platform" },
     { name: "AWS", category: "Platform" },
     { name: "AI/ML", category: "AI" },
+    { name: "TAILWIND CSS", category: "Framework" },
+    { name: "GIT/GITHUB", category: "Platform" },
+    { name: "DOCKER", category: "Platform" },
+    { name: "CLOUDFLARE", category: "Platform" },
   ]
 
   const projects = [
-    { name: "GEOLOCATION APP", description: "Location tracking and mapping application" },
-    { name: "CPMDWORKSPACE APP", description: "Workspace management system" },
-    { name: "LIBRARY SYSTEM APP", description: "Digital library management platform" },
-    { name: "INVENTORY APP", description: "Stock and inventory tracking system" },
-    { name: "WRITEUP APP", description: "Document writing and editing tool" },
-    { name: "BUDGET MANAGEMENT APP", description: "Financial planning and budget tracking" },
-    { name: "NOTICEBOARD APP", description: "Digital announcement and notice system" },
-    { name: "WHEREABOUTS APP", description: "Attendance and location tracking system" },
-    { name: "AI RESEARCH ASSISTANT APP", description: "AI-powered research and information assistant" },
+    { name: "GEOLOCATION APP", description: "Location tracking and mapping application", image: "/projects/geolocation app.jpg" },
+    { name: "CPMDWORKSPACE APP", description: "Workspace management system", image: "/projects/workspace.png" },
+    { name: "TASKBOARD SYSTEM APP", description: "Task and project management board", image: "/projects/taskboard.png" },
+    { name: "INVENTORY APP", description: "Stock and inventory tracking system", image: "/projects/inventory system.png" },
+    { name: "WRITEUP APP", description: "Document writing and editing tool", image: "/projects/writeup.png" },
+    { name: "BUDGET MANAGEMENT APP", description: "Financial planning and budget tracking", image: "/projects/budget management.png" },
+    { name: "NOTICEBOARD APP", description: "Digital announcement and notice system", image: "/projects/noticeboard.png" },
+    { name: "WHEREABOUTS APP", description: "Attendance and location tracking system", image: "/projects/whereabouts.png" },
+    { name: "AI RESEARCH ASSISTANT APP", description: "AI-powered research and information assistant", image: "/projects/ai chatbot.png" },
   ]
+
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
 
   return (
     <div className="min-h-screen pixel-text scanline transition-colors duration-300">
@@ -84,7 +110,7 @@ export default function Home() {
           transition={{ duration: 0.8 }}
           className="text-center"
         >
-          <div className="text-6xl md:text-8xl mb-4 animate-float flex justify-center"><FaCoffee /></div>
+          <div className="mb-4 flex justify-center"><img src="/image/pixelimage.jpg" alt="Kent Daryl M. Gilo" className="w-32 h-32 md:w-48 md:h-48 object-cover rounded-full border-4" style={{ imageRendering: 'auto', borderColor: 'currentColor' }} /></div>
           <h1 className="text-2xl md:text-4xl lg:text-5xl mb-4 leading-relaxed">
             KENT DARYL M. GILO
           </h1>
@@ -198,23 +224,65 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project, index) => (
-              <motion.div
+              <motion.button
                 key={project.name}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ scale: 1.02 }}
-                className="pixel-border p-6 transition-colors"
-                style={{ backgroundColor: 'var(--background)' }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSelectedProject(project)}
+                className="pixel-border p-6 transition-colors text-left cursor-pointer w-full"
+                style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', fontFamily: 'inherit' }}
               >
                 <h3 className="text-sm md:text-base font-semibold mb-2">{project.name}</h3>
                 <p className="text-xs" style={{ color: 'var(--foreground)', opacity: 0.7 }}>{project.description}</p>
-              </motion.div>
+                <p className="text-[10px] mt-3" style={{ color: 'var(--progress)', opacity: 0.8 }}>
+                  [CLICK TO VIEW_]
+                </p>
+              </motion.button>
             ))}
           </div>
         </div>
       </section>
+
+      <AnimatePresence>
+        {selectedProject && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedProject(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="pixel-border p-6 w-full max-w-6xl"
+              style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm md:text-base font-semibold">{selectedProject.name}</h3>
+                <button
+                  onClick={() => setSelectedProject(null)}
+                  className="pixel-btn px-3 py-2 text-sm"
+                  style={{ backgroundColor: 'var(--background)' }}
+                  aria-label="Close project preview"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <ProjectImage project={selectedProject} />
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--foreground)', opacity: 0.7 }}>{selectedProject.description}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* About Section */}
       <section id="about" className="min-h-screen py-20 px-4" style={{ backgroundColor: 'var(--background)' }}>
@@ -329,8 +397,6 @@ export default function Home() {
                 <div className="text-sm">FACEBOOK</div>
               </motion.a>
             </div>
-
-            <SnakeGame />
           </motion.div>
         </div>
       </section>

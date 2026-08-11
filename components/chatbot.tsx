@@ -11,7 +11,7 @@ type Message = {
 const PROJECTS = [
   "GEOLOCATION APP — Location tracking and mapping application",
   "CPMDWORKSPACE APP — Workspace management system",
-  "LIBRARY SYSTEM APP — Digital library management platform",
+  "TASKBOARD SYSTEM APP — Task and project management board",
   "INVENTORY APP — Stock and inventory tracking system",
   "WRITEUP APP — Document writing and editing tool",
   "BUDGET MANAGEMENT APP — Financial planning and budget tracking",
@@ -30,12 +30,13 @@ const SKILLS = [
 ]
 
 const TECHNOLOGIES = [
-  "Frameworks: LARAVEL, REACT NATIVE, NEXT JS",
+  "Frameworks: LARAVEL, REACT NATIVE, NEXT JS, TAILWIND CSS",
   "Languages: JAVASCRIPT, TYPESCRIPT, PHP, SQL",
   "Libraries: REACT JS",
   "Databases: POSTGRESQL, SQL",
   "Servers: WINDOWS SERVER, LINUX SERVER",
-  "Platforms: VERCEL, LARAVEL CLOUD, FIREBASE, AWS",
+  "Platforms: VERCEL, LARAVEL CLOUD, FIREBASE, AWS, GIT/GITHUB, CLOUDFLARE",
+  "DevOps: DOCKER",
   "Also: AI/ML",
 ]
 
@@ -75,9 +76,9 @@ const INTENTS: Intent[] = [
       "THE GEOLOCATION APP IS A LOCATION TRACKING AND MAPPING APPLICATION BUILT BY KENT. IT'S GREAT FOR FOLLOWING WHEREABOUTS AND PLOTTING POSITIONS ON A MAP.",
   },
   {
-    keywords: ["library"],
+    keywords: ["taskboard", "task", "board", "kanban"],
     answer:
-      "THE LIBRARY SYSTEM APP IS A DIGITAL LIBRARY MANAGEMENT PLATFORM — PERFECT FOR ORGANIZING BOOKS, MEMBERS, AND BORROWING RECORDS.",
+      "THE TASKBOARD SYSTEM APP IS A TASK AND PROJECT MANAGEMENT BOARD — PERFECT FOR ORGANIZING TASKS, TEAM WORKFLOWS, AND PROJECT PROGRESS.",
   },
   {
     keywords: ["inventory"],
