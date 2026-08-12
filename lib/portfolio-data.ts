@@ -20,18 +20,18 @@ export const ROLE_LABEL = "FULL STACK WEB DEVELOPER"
 
 export const SKILLS: Skill[] = [
   { name: "Full Stack Web Developer", percentage: 85 },
-  { name: "Sysadmin", percentage: 80 },
+  { name: "DevOps Engineer", percentage: 80 },
   { name: "Cloud Engineer", percentage: 80 },
-  { name: "Graphic Illustrator", percentage: 80 },
+  { name: "UI/UX Designer", percentage: 80 },
   { name: "Graphic Designer", percentage: 85 },
   { name: "Multimedia Editor", percentage: 80 },
 ]
 
 export const TYPED_SKILLS: string[] = [
   "FULL STACK WEB DEVELOPER",
-  "SYSADMIN",
+  "DEVOPS ENGINEER",
   "CLOUD ENGINEER",
-  "GRAPHIC ILLUSTRATOR",
+  "UI/UX DESIGNER",
   "GRAPHIC DESIGNER",
   "MULTIMEDIA EDITOR",
 ]

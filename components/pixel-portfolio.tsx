@@ -18,7 +18,7 @@ import {
   FaLaptopCode,
   FaServer,
   FaCloud,
-  FaPalette,
+  FaLayerGroup,
   FaPen,
   FaFilm,
   FaEnvelope,
@@ -28,14 +28,15 @@ import {
   FaChevronDown,
   FaPlay,
   FaTimes,
+  FaCogs,
 } from "react-icons/fa"
 import type { Project } from "@/lib/portfolio-data"
 
 const SKILL_ICONS: Record<string, React.ReactNode> = {
   "Full Stack Web Developer": <FaLaptopCode />,
-  Sysadmin: <FaServer />,
+  "DevOps Engineer": <FaCogs />,
   "Cloud Engineer": <FaCloud />,
-  "Graphic Illustrator": <FaPalette />,
+  "UI/UX Designer": <FaLayerGroup />,
   "Graphic Designer": <FaPen />,
   "Multimedia Editor": <FaFilm />,
 }

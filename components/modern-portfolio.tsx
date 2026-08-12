@@ -21,7 +21,7 @@ import {
   FaLaptopCode,
   FaServer,
   FaCloud,
-  FaPalette,
+  FaLayerGroup,
   FaPen,
   FaFilm,
   FaEnvelope,
@@ -33,14 +33,15 @@ import {
   FaCode,
   FaDatabase,
   FaTerminal,
+  FaCogs,
 } from "react-icons/fa"
 import type { Project } from "@/lib/portfolio-data"
 
 const skillIcons: Record<string, React.ReactNode> = {
   "Full Stack Web Developer": <FaLaptopCode />,
-  Sysadmin: <FaServer />,
+  "DevOps Engineer": <FaCogs />,
   "Cloud Engineer": <FaCloud />,
-  "Graphic Illustrator": <FaPalette />,
+  "UI/UX Designer": <FaLayerGroup />,
   "Graphic Designer": <FaPen />,
   "Multimedia Editor": <FaFilm />,
 }
@@ -48,7 +49,10 @@ const skillIcons: Record<string, React.ReactNode> = {
 function titleCaseRole(role: string) {
   return role
     .split(" ")
-    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .map((w) => {
+      const cased = w.charAt(0) + w.slice(1).toLowerCase()
+      return cased === "Ui/ux" ? "UI/UX" : cased
+    })
     .join(" ")
 }
 

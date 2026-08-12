@@ -17,7 +17,7 @@ const interFont = Inter({
 
 export const metadata: Metadata = {
   title: "Kent Daryl M. Gilo - Portfolio",
-  description: "Full Stack Web Developer, Sysadmin, Cloud Engineer, Graphic Illustrator, Graphic Designer, Multimedia Editor",
+  description: "Full Stack Web Developer, DevOps Engineer, Cloud Engineer, UI/UX Designer, Graphic Designer, Multimedia Editor",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
