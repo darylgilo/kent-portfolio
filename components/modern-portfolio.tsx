@@ -316,7 +316,7 @@ export function ModernPortfolio() {
             <img
               src={PROFILE_IMAGE}
               alt={PORTFOLIO_OWNER}
-              className="relative h-64 w-64 rounded-full object-cover md:h-80 md:w-80"
+              className="relative h-48 w-48 rounded-full object-cover md:h-64 md:w-64"
               style={{
                 border: "6px solid var(--background)",
                 boxShadow: "0 0 0 4px var(--accent), 0 0 0 9px var(--accent-2), 0 25px 60px rgba(0,0,0,0.35)",
