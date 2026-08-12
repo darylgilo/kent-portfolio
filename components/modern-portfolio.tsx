@@ -264,7 +264,7 @@ export function ModernPortfolio() {
               className="mt-6 max-w-md text-sm leading-relaxed md:text-base"
               style={{ color: "var(--muted)" }}
             >
-              Full Stack Developer, Sysadmin, Cloud Engineer, and Graphic Designer — I blend engineering
+              Full Stack Developer, DevOps Engineer, Cloud Engineer, and Graphic Designer — I blend engineering
               with creativity to build elegant, reliable, and beautiful digital experiences.
             </motion.p>
             <motion.div
