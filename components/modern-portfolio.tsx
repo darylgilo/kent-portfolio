@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ThemeToggle } from "./theme-toggle"
 import { TemplateToggle } from "./template-toggle"
 import { ChatBot } from "./chatbot"
+import { RotatingQuote } from "./rotating-quote"
 import {
   PORTFOLIO_OWNER,
   ROLE_LABEL,
@@ -322,6 +323,7 @@ export function ModernPortfolio() {
                 boxShadow: "0 0 0 4px var(--accent), 0 0 0 9px var(--accent-2), 0 25px 60px rgba(0,0,0,0.35)",
               }}
             />
+            <RotatingQuote variant="modern" />
           </motion.div>
         </div>
 

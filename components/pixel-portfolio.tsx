@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TemplateToggle } from "@/components/template-toggle"
 import { ChatBot } from "@/components/chatbot"
+import { RotatingQuote } from "@/components/rotating-quote"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   PORTFOLIO_OWNER,
@@ -119,7 +120,10 @@ export function PixelPortfolio() {
           transition={{ duration: 0.8 }}
           className="text-center"
         >
-          <div className="mb-4 flex justify-center"><img src={PROFILE_IMAGE} alt={PORTFOLIO_OWNER} className="w-32 h-32 md:w-48 md:h-48 object-cover rounded-full border-4" style={{ imageRendering: 'auto', borderColor: 'currentColor' }} /></div>
+          <div className="mb-4 relative inline-block">
+            <img src={PROFILE_IMAGE} alt={PORTFOLIO_OWNER} className="w-32 h-32 md:w-48 md:h-48 object-cover rounded-full border-4" style={{ imageRendering: 'auto', borderColor: 'currentColor' }} />
+            <RotatingQuote variant="pixel" />
+          </div>
           <h1 className="text-2xl md:text-4xl lg:text-5xl mb-4 leading-relaxed">
             {PORTFOLIO_OWNER}
           </h1>
