@@ -561,6 +561,7 @@ export function ModernPortfolio() {
                   <iframe
                     src={`${certificate.image}#toolbar=0&navpanes=0&scrollbar=0`}
                     title={certificate.name}
+                    loading="lazy"
                     className="w-full h-full"
                     style={{
                       border: 'none',

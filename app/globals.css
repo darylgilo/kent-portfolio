@@ -173,7 +173,7 @@ html {
 .cert-carousel-track {
   display: flex;
   width: max-content;
-  animation: cert-carousel-scroll 70s linear infinite;
+  animation: cert-carousel-scroll 100s linear infinite;
 }
 
 .cert-carousel:hover .cert-carousel-track,
