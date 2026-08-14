@@ -148,3 +148,61 @@ html {
 .modern-root * {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
 }
+
+.cert-carousel {
+  overflow: hidden;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cert-carousel.is-dragging {
+  cursor: grabbing;
+}
+
+.cert-carousel.is-dragging .cert-carousel-track {
+  animation-play-state: paused !important;
+  pointer-events: none;
+}
+
+.cert-carousel-drag {
+  will-change: transform;
+}
+
+.cert-carousel-track {
+  display: flex;
+  width: max-content;
+  animation: cert-carousel-scroll 70s linear infinite;
+}
+
+.cert-carousel:hover .cert-carousel-track,
+.cert-carousel:focus-within .cert-carousel-track {
+  animation-play-state: paused;
+}
+
+.cert-carousel-group {
+  display: flex;
+  gap: 1.5rem;
+  padding-right: 1.5rem;
+  flex-shrink: 0;
+}
+
+.cert-carousel-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+}
+
+@keyframes cert-carousel-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cert-carousel-track {
+    animation: none;
+  }
+  .cert-carousel {
+    overflow-x: auto;
+  }
+}

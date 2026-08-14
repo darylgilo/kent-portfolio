@@ -6,12 +6,14 @@ import { TemplateToggle } from "@/components/template-toggle"
 import { ChatBot } from "@/components/chatbot"
 import { RotatingQuote } from "@/components/rotating-quote"
 import { AnimatePresence, motion } from "framer-motion"
+import { CertificateCarousel } from "./certificate-carousel"
 import {
   PORTFOLIO_OWNER,
   SKILLS,
   TYPED_SKILLS,
   TECHNOLOGIES,
   PROJECTS,
+  CERTIFICATES,
   SOCIALS,
   PROFILE_IMAGE,
 } from "@/lib/portfolio-data"
@@ -31,7 +33,7 @@ import {
   FaTimes,
   FaCogs,
 } from "react-icons/fa"
-import type { Project } from "@/lib/portfolio-data"
+import type { Project, Certificate } from "@/lib/portfolio-data"
 
 const SKILL_ICONS: Record<string, React.ReactNode> = {
   "Full Stack Web Developer": <FaLaptopCode />,
@@ -90,7 +92,42 @@ function ProjectImage({ project }: { project: Project }) {
     <div className="w-full h-48 md:h-64 pixel-border mb-4 flex flex-col items-center justify-center gap-3 text-center px-4" style={{ color: 'var(--foreground)' }}>
       <span className="text-2xl animate-blink">[NO SCREENSHOT]</span>
       <span className="text-[10px]" style={{ opacity: 0.6 }}>
-        ADD AN IMAGE LIKE {project.image} IN THE public/projects/ FOLDER
+        ADD AN IMAGE LIKE {project.image} IN THE private/projects/ FOLDER
+      </span>
+    </div>
+  )
+}
+
+function CertificateImage({ certificate }: { certificate: Certificate }) {
+  const isPdf = certificate.image.endsWith('.pdf')
+  if (isPdf) {
+    return (
+      <div className="w-full mb-4">
+        <div className="w-full h-[60vh] overflow-hidden pixel-border" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <iframe
+            src={`${certificate.image}#toolbar=0&navpanes=0&scrollbar=0`}
+            title={certificate.name}
+            className="w-full h-full"
+            style={{ border: 'none', transform: 'scale(0.95)', transformOrigin: 'top center' }}
+            scrolling="no"
+          />
+        </div>
+      </div>
+    )
+  }
+  const [loaded, setLoaded] = useState(true)
+  return loaded ? (
+    <img
+      src={certificate.image}
+      alt={certificate.name}
+      onError={() => setLoaded(false)}
+      className="w-full h-auto pixel-border mb-4"
+    />
+  ) : (
+    <div className="w-full h-48 md:h-64 pixel-border mb-4 flex flex-col items-center justify-center gap-3 text-center px-4" style={{ color: 'var(--foreground)' }}>
+      <span className="text-2xl animate-blink">[NO CERTIFICATE]</span>
+      <span className="text-[10px]" style={{ opacity: 0.6 }}>
+        ADD AN IMAGE LIKE {certificate.image} IN THE private/certificate/ FOLDER
       </span>
     </div>
   )
@@ -98,6 +135,7 @@ function ProjectImage({ project }: { project: Project }) {
 
 export function PixelPortfolio() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null)
 
   return (
     <div className="min-h-screen pixel-text scanline transition-colors duration-300">
@@ -138,7 +176,7 @@ export function PixelPortfolio() {
               href="#contact"
               className="pixel-btn px-8 py-4 text-sm md:text-base inline-block"
             >
-              START GAME_
+              CONTACT ME_
             </a>
           </motion.div>
         </motion.div>
@@ -292,6 +330,78 @@ export function PixelPortfolio() {
               </div>
               <ProjectImage project={selectedProject} />
               <p className="text-xs leading-relaxed" style={{ color: 'var(--foreground)', opacity: 0.7 }}>{selectedProject.description}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Certificates Section */}
+      <section id="certificates" className="min-h-screen py-20 px-4 transition-colors duration-300" style={{ backgroundColor: 'var(--background)' }}>
+        <div className="max-w-6xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="text-xl md:text-3xl mb-12 text-center"
+          >
+            ◆ CERTIFICATES ◆
+          </motion.h2>
+
+          <CertificateCarousel
+            certificates={CERTIFICATES}
+            renderCard={(certificate) => (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSelectedCertificate(certificate)}
+                className="pixel-border p-6 w-72 shrink-0 h-full flex flex-col transition-colors text-left cursor-pointer"
+                style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', fontFamily: 'inherit' }}
+              >
+                <h3 className="text-sm md:text-base font-semibold mb-2 leading-snug">{certificate.name}</h3>
+                <p className="text-xs" style={{ color: 'var(--foreground)', opacity: 0.7 }}>{certificate.issuer}</p>
+                <p className="text-[10px] mt-auto pt-3" style={{ color: 'var(--progress)', opacity: 0.8 }}>
+                  [CLICK TO VIEW_]
+                </p>
+              </motion.button>
+            )}
+          />
+        </div>
+      </section>
+
+      <AnimatePresence>
+        {selectedCertificate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedCertificate(null)}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="pixel-border p-6 w-full max-w-4xl"
+              style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-sm md:text-base font-semibold">{selectedCertificate.name}</h3>
+                  <p className="text-xs" style={{ color: 'var(--foreground)', opacity: 0.7 }}>{selectedCertificate.issuer}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedCertificate(null)}
+                  className="pixel-btn px-3 py-2 text-sm"
+                  style={{ backgroundColor: 'var(--background)' }}
+                  aria-label="Close certificate preview"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <CertificateImage certificate={selectedCertificate} />
             </motion.div>
           </motion.div>
         )}

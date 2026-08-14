@@ -6,6 +6,7 @@ import { ThemeToggle } from "./theme-toggle"
 import { TemplateToggle } from "./template-toggle"
 import { ChatBot } from "./chatbot"
 import { RotatingQuote } from "./rotating-quote"
+import { CertificateCarousel } from "./certificate-carousel"
 import {
   PORTFOLIO_OWNER,
   ROLE_LABEL,
@@ -13,6 +14,7 @@ import {
   TYPED_SKILLS,
   TECHNOLOGIES,
   PROJECTS,
+  CERTIFICATES,
   SOCIALS,
   PROFILE_IMAGE,
   ABOUT_PARAGRAPHS,
@@ -36,7 +38,7 @@ import {
   FaTerminal,
   FaCogs,
 } from "react-icons/fa"
-import type { Project } from "@/lib/portfolio-data"
+import type { Project, Certificate } from "@/lib/portfolio-data"
 
 const skillIcons: Record<string, React.ReactNode> = {
   "Full Stack Web Developer": <FaLaptopCode />,
@@ -160,7 +162,7 @@ function ModernProjectModal({ project, onClose }: { project: Project; onClose: (
             >
               <span className="font-semibold">No screenshot available</span>
               <span className="text-xs" style={{ color: "var(--muted)" }}>
-                Add an image like {project.image} in the public/projects/ folder
+                Add an image like {project.image} in the private/projects/ folder
               </span>
             </div>
           )}
@@ -173,16 +175,82 @@ function ModernProjectModal({ project, onClose }: { project: Project; onClose: (
   )
 }
 
+function ModernCertificateModal({ certificate, onClose }: { certificate: Certificate; onClose: () => void }) {
+  const isPdf = certificate.image.endsWith('.pdf')
+  return (
+    <motion.div
+      key="certificate-modal"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+    >
+      <motion.div
+        initial={{ scale: 0.92, y: 24 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.92, y: 24 }}
+        transition={{ type: "spring", duration: 0.45 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-4xl overflow-hidden rounded-2xl shadow-2xl"
+        style={{ backgroundColor: "var(--card)" }}
+      >
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: "1px solid var(--border-color)" }}
+        >
+          <div>
+            <h3 className="font-bold text-sm md:text-lg">{certificate.name}</h3>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>{certificate.issuer}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+            style={{ backgroundColor: "var(--accent)", color: "#ffffff" }}
+            aria-label="Close certificate preview"
+          >
+            <FaTimes className="text-sm" />
+          </button>
+        </div>
+        <div className="p-6">
+          {isPdf ? (
+            <>
+              <div className="w-full h-[70vh] overflow-hidden rounded-xl" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <iframe
+                  src={`${certificate.image}#toolbar=0&navpanes=0&scrollbar=0`}
+                  title={certificate.name}
+                  className="w-full h-full"
+                  style={{ border: 'none', transform: 'scale(0.95)', transformOrigin: 'top center' }}
+                  scrolling="no"
+                />
+              </div>
+            </>
+          ) : (
+            <img
+              src={certificate.image}
+              alt={certificate.name}
+              className="w-full max-h-[70vh] object-contain rounded-xl mb-5"
+            />
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 const navLinks = [
   { label: "Home", href: "#home" },
   { label: "Skills", href: "#skills" },
   { label: "Projects", href: "#projects" },
+  { label: "Certificates", href: "#certificates" },
   { label: "About", href: "#about" },
   { label: "Contact", href: "#contact" },
 ]
 
 export function ModernPortfolio() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null)
 
   return (
     <div
@@ -475,6 +543,52 @@ export function ModernPortfolio() {
         </div>
       </section>
 
+      {/* Certificates */}
+      <section id="certificates" className="px-4 py-24" style={{ backgroundColor: "var(--card)" }}>
+        <div className="mx-auto max-w-6xl">
+          <SectionHeading eyebrow="My achievements" title="Certificates" />
+          <CertificateCarousel
+            certificates={CERTIFICATES}
+            className="cert-carousel-fade"
+            renderCard={(certificate) => (
+              <motion.button
+                whileHover={{ y: -8 }}
+                onClick={() => setSelectedCertificate(certificate)}
+                className="w-72 shrink-0 h-full flex flex-col overflow-hidden rounded-2xl text-left shadow-sm transition-shadow hover:shadow-xl"
+                style={{ backgroundColor: "var(--background)", border: "1px solid var(--border-color)", cursor: "pointer" }}
+              >
+                <div className="relative overflow-hidden aspect-video flex-none flex items-center justify-center" style={{ backgroundColor: "var(--card-hover)" }}>
+                  <iframe
+                    src={`${certificate.image}#toolbar=0&navpanes=0&scrollbar=0`}
+                    title={certificate.name}
+                    className="w-full h-full"
+                    style={{
+                      border: 'none',
+                      pointerEvents: 'none',
+                      transform: 'scale(1.5)',
+                      transformOrigin: 'top center'
+                    }}
+                    scrolling="no"
+                  />
+                  <span
+                    className="absolute right-3 top-3 rounded-full px-3 py-1 text-[9px] font-bold text-white"
+                    style={{ background: "linear-gradient(90deg, var(--accent), var(--accent-2))" }}
+                  >
+                    VIEW CERT →
+                  </span>
+                </div>
+                <div className="p-5 flex-1 flex flex-col justify-between min-h-0">
+                  <h3 className="text-sm font-bold md:text-base leading-snug line-clamp-3">{certificate.name}</h3>
+                  <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+                    {certificate.issuer}
+                  </p>
+                </div>
+              </motion.button>
+            )}
+          />
+        </div>
+      </section>
+
       {/* About */}
       <section id="about" className="px-4 py-24" style={{ backgroundColor: "var(--card)" }}>
         <div className="mx-auto max-w-5xl">
@@ -571,6 +685,9 @@ export function ModernPortfolio() {
       <AnimatePresence>
         {selectedProject && (
           <ModernProjectModal project={selectedProject} onClose={() => setSelectedProject(null)} />
+        )}
+        {selectedCertificate && (
+          <ModernCertificateModal certificate={selectedCertificate} onClose={() => setSelectedCertificate(null)} />
         )}
       </AnimatePresence>
 
