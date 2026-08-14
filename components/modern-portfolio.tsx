@@ -176,7 +176,6 @@ function ModernProjectModal({ project, onClose }: { project: Project; onClose: (
 }
 
 function ModernCertificateModal({ certificate, onClose }: { certificate: Certificate; onClose: () => void }) {
-  const isPdf = certificate.image.endsWith('.pdf')
   return (
     <motion.div
       key="certificate-modal"
@@ -214,25 +213,11 @@ function ModernCertificateModal({ certificate, onClose }: { certificate: Certifi
           </button>
         </div>
         <div className="p-6">
-          {isPdf ? (
-            <>
-              <div className="w-full h-[70vh] overflow-hidden rounded-xl" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                <iframe
-                  src={`${certificate.image}#toolbar=0&navpanes=0&scrollbar=0`}
-                  title={certificate.name}
-                  className="w-full h-full"
-                  style={{ border: 'none', transform: 'scale(0.95)', transformOrigin: 'top center' }}
-                  scrolling="no"
-                />
-              </div>
-            </>
-          ) : (
-            <img
-              src={certificate.image}
-              alt={certificate.name}
-              className="w-full max-h-[70vh] object-contain rounded-xl mb-5"
-            />
-          )}
+          <img
+            src={certificate.image}
+            alt={certificate.name}
+            className="w-full max-h-[70vh] object-contain rounded-xl mb-5"
+          />
         </div>
       </motion.div>
     </motion.div>
@@ -558,18 +543,12 @@ export function ModernPortfolio() {
                 style={{ backgroundColor: "var(--background)", border: "1px solid var(--border-color)", cursor: "pointer" }}
               >
                 <div className="relative overflow-hidden aspect-video flex-none flex items-center justify-center" style={{ backgroundColor: "var(--card-hover)" }}>
-                  <iframe
-                    src={`${certificate.image}#toolbar=0&navpanes=0&scrollbar=0`}
-                    title={certificate.name}
+                  <img
+                    src={certificate.image}
+                    alt={certificate.name}
                     loading="lazy"
-                    className="w-full h-full"
-                    style={{
-                      border: 'none',
-                      pointerEvents: 'none',
-                      transform: 'scale(1.5)',
-                      transformOrigin: 'top center'
-                    }}
-                    scrolling="no"
+                    className="w-full h-full object-contain"
+                    draggable={false}
                   />
                   <span
                     className="absolute right-3 top-3 rounded-full px-3 py-1 text-[9px] font-bold text-white"

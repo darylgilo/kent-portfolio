@@ -99,22 +99,6 @@ function ProjectImage({ project }: { project: Project }) {
 }
 
 function CertificateImage({ certificate }: { certificate: Certificate }) {
-  const isPdf = certificate.image.endsWith('.pdf')
-  if (isPdf) {
-    return (
-      <div className="w-full mb-4">
-        <div className="w-full h-[60vh] overflow-hidden pixel-border" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <iframe
-            src={`${certificate.image}#toolbar=0&navpanes=0&scrollbar=0`}
-            title={certificate.name}
-            className="w-full h-full"
-            style={{ border: 'none', transform: 'scale(0.95)', transformOrigin: 'top center' }}
-            scrolling="no"
-          />
-        </div>
-      </div>
-    )
-  }
   const [loaded, setLoaded] = useState(true)
   return loaded ? (
     <img
