@@ -1,4 +1,4 @@
-# Kent Daryl M. Gilo - Pixel Art Portfolio
+# Kent Daryl M. Gilo - Portfolio
 
 A pixel-art styled portfolio website built with Next.js, featuring dark/light mode and a minimalist black and white aesthetic.
 
