@@ -29,60 +29,17 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-pixel: var(--font-pixel);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-pixel), monospace;
-  image-rendering: pixelated;
+  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 html {
   scroll-behavior: smooth;
-}
-
-.pixel-text {
-  font-family: var(--font-pixel), monospace;
-  letter-spacing: 0.05em;
-}
-
-.pixel-corners {
-  border-radius: 0;
-  box-shadow: 
-    4px 0 0 0 currentColor,
-    -4px 0 0 0 currentColor,
-    0 4px 0 0 currentColor,
-    0 -4px 0 0 currentColor;
-  margin: 4px;
-}
-
-.pixel-border {
-  border: 4px solid currentColor;
-  border-radius: 0;
-}
-
-.pixel-btn {
-  position: relative;
-  border: 4px solid currentColor;
-  background: transparent;
-  transition: all 0.1s;
-}
-
-.pixel-btn:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 
-    4px 0 0 0 currentColor,
-    -4px 0 0 0 currentColor,
-    0 4px 0 0 currentColor,
-    0 -4px 0 0 currentColor;
-}
-
-.pixel-btn:active {
-  transform: translate(0, 0);
-  box-shadow: none;
 }
 
 @keyframes float {
@@ -95,11 +52,6 @@ html {
   51%, 100% { opacity: 0; }
 }
 
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
-}
-
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -107,23 +59,6 @@ html {
 .animate-blink {
   animation: blink 1s step-end infinite;
   display: inline-block;
-}
-
-.scanline::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 50%,
-    rgba(0, 0, 0, 0.1) 51%
-  );
-  background-size: 100% 4px;
-  pointer-events: none;
-  z-index: 10;
 }
 
 @keyframes blob-float {
@@ -143,10 +78,6 @@ html {
 
 .animate-type-bar {
   animation: type-bar 0.9s step-end infinite;
-}
-
-.modern-root * {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
 }
 
 .cert-carousel {

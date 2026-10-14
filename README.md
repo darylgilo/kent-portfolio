@@ -1,10 +1,10 @@
-# Kent Daryl M. Gilo - Pixel Art Portfolio
+# Kent Daryl M. Gilo - Portfolio
 
-A pixel-art styled portfolio website built with Next.js, featuring dark/light mode and a minimalist black and white aesthetic.
+A modern portfolio website built with Next.js, featuring dark/light mode and a clean, professional aesthetic.
 
 ## Features
 
-- **Pixel Art Design**: Retro gaming aesthetic with pixel-style fonts and UI elements
+- **Modern Design**: Clean, professional layout with gradient accents
 - **Dark/Light Mode**: Toggle between themes with smooth transitions
 - **Responsive Design**: Fully responsive across all devices
 - **Smooth Animations**: Framer Motion powered animations and transitions
@@ -18,7 +18,7 @@ A pixel-art styled portfolio website built with Next.js, featuring dark/light mo
 - **Tailwind CSS**: Utility-first CSS framework
 - **next-themes**: Theme management
 - **Framer Motion**: Animation library
-- **Press Start 2P**: Pixel art font
+- **Inter**: Modern sans-serif font
 
 ## Getting Started
 
@@ -49,7 +49,6 @@ Edit `app/page.tsx` to update:
 ### Modify Styling
 
 Edit `app/globals.css` to customize:
-- Pixel art effects
 - Animation timings
 - Color schemes
 - Border styles

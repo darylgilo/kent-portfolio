@@ -4,11 +4,7 @@ import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { QUOTES } from "@/lib/portfolio-data"
 
-type RotatingQuoteProps = {
-  variant?: "pixel" | "modern"
-}
-
-export function RotatingQuote({ variant = "modern" }: RotatingQuoteProps) {
+export function RotatingQuote() {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
@@ -18,12 +14,10 @@ export function RotatingQuote({ variant = "modern" }: RotatingQuoteProps) {
     return () => clearInterval(timer)
   }, [])
 
-  const isPixel = variant === "pixel"
-
   return (
-    <div className={`absolute z-10 ${isPixel ? "-top-24 -right-32 md:-top-20 md:-right-48" : "-top-14 -right-18 md:-top-10 md:-right-32"}`}>
+    <div className="absolute z-10 -top-14 -right-18 md:-top-10 md:-right-32">
       <div
-        className={isPixel ? "pixel-border px-3 py-2" : "rounded-2xl border px-4 py-3 shadow-lg"}
+        className="rounded-2xl border px-4 py-3 shadow-lg"
         style={{ backgroundColor: "var(--background)", borderColor: "var(--border-color)" }}
       >
         <AnimatePresence mode="wait">
@@ -41,12 +35,12 @@ export function RotatingQuote({ variant = "modern" }: RotatingQuoteProps) {
         </AnimatePresence>
       </div>
       <div
-        className={isPixel ? "-ml-1 h-3 w-3 rotate-45" : "-ml-1 h-3 w-3 rotate-45 rounded-[2px]"}
+        className="-ml-1 h-3 w-3 rotate-45 rounded-[2px]"
         style={{
           backgroundColor: "var(--background)",
-          borderLeft: isPixel ? "4px solid var(--border-color)" : "1px solid var(--border-color)",
-          borderBottom: isPixel ? "4px solid var(--border-color)" : "1px solid var(--border-color)",
-          marginTop: isPixel ? "-8px" : "-7px",
+          borderLeft: "1px solid var(--border-color)",
+          borderBottom: "1px solid var(--border-color)",
+          marginTop: "-7px",
         }}
       />
     </div>

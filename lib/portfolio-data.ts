@@ -33,6 +33,9 @@ export const SKILLS: Skill[] = [
   { name: "UI/UX Designer", percentage: 80 },
   { name: "Graphic Designer", percentage: 85 },
   { name: "Multimedia Editor", percentage: 80 },
+  { name: "IT Support", percentage: 85 },
+  { name: "Mobile Developer", percentage: 80 },
+  { name: "AI Engineering", percentage: 75 },
 ]
 
 export const TYPED_SKILLS: string[] = [
@@ -42,6 +45,9 @@ export const TYPED_SKILLS: string[] = [
   "UI/UX DESIGNER",
   "GRAPHIC DESIGNER",
   "MULTIMEDIA EDITOR",
+  "IT SUPPORT",
+  "MOBILE DEVELOPER",
+  "AI ENGINEERING",
 ]
 
 export const TECHNOLOGIES: Technology[] = [
@@ -86,7 +92,7 @@ export const SOCIALS = {
   facebook: "https://facebook.com/darylgilo",
 }
 
-export const PROFILE_IMAGE = "/api/image/pixelimage.jpg"
+export const PROFILE_IMAGE = "/api/image/darylphoto.png"
 
 export const QUOTES: string[] = [
   "A degree may mark the end of a chapter, but continuous learning writes the rest of the story.",
@@ -121,8 +127,8 @@ export const CERTIFICATES: Certificate[] = [
   { name: "Foundation of Cybersecurity", issuer: "Coursera", image: "/api/certificates/Foundation of Cybersecurity.png" },
   { name: "Foundations of User Experience (UX) Design", issuer: "Coursera", image: "/api/certificates/Foundations of User Experience (UX) Design.png" },
   { name: "Functional Composition", issuer: "DICT", image: "/api/certificates/Functional Composition.png" },
-  { name: "Fundamental of Python Programming", issuer: "Coursera", image: "/api/certificates/Fundamental of Python Programming.png" },
-  { name: "Introduction to Web Development", issuer: "Coursera", image: "/api/certificates/Introduction to web development.png" },
+  { name: "Fundamental of Python Programming", issuer: "Data Analytics Philippines", image: "/api/certificates/Fundamental of Python Programming.png" },
+  { name: "Introduction to Web Development", issuer: "LifeGiver", image: "/api/certificates/Introduction to web development.png" },
   { name: "Python", issuer: "DICT", image: "/api/certificates/python.png" },
   { name: "Start of UX Design", issuer: "Coursera", image: "/api/certificates/Start of UX design.png" },
   { name: "Technical Support Fundamentals", issuer: "Coursera", image: "/api/certificates/Technical Suppor Fundamentals.png" },

@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ThemeToggle } from "./theme-toggle"
-import { TemplateToggle } from "./template-toggle"
 import { ChatBot } from "./chatbot"
 import { RotatingQuote } from "./rotating-quote"
 import { CertificateCarousel } from "./certificate-carousel"
@@ -47,6 +45,9 @@ const skillIcons: Record<string, React.ReactNode> = {
   "UI/UX Designer": <FaLayerGroup />,
   "Graphic Designer": <FaPen />,
   "Multimedia Editor": <FaFilm />,
+  "IT Support": <FaServer />,
+  "Mobile Developer": <FaCode />,
+  "AI Engineering": <FaTerminal />,
 }
 
 function titleCaseRole(role: string) {
@@ -54,7 +55,9 @@ function titleCaseRole(role: string) {
     .split(" ")
     .map((w) => {
       const cased = w.charAt(0) + w.slice(1).toLowerCase()
-      return cased === "Ui/ux" ? "UI/UX" : cased
+      if (cased === "Ui/ux") return "UI/UX"
+      if (cased === "It") return "IT"
+      return cased
     })
     .join(" ")
 }
@@ -239,7 +242,7 @@ export function ModernPortfolio() {
 
   return (
     <div
-      className="modern-root min-h-screen transition-colors duration-300"
+      className="min-h-screen transition-colors duration-300"
       style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}
     >
       {/* Navbar */}
@@ -249,12 +252,11 @@ export function ModernPortfolio() {
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <a href="#home" className="flex items-center">
-            <span
-              className="flex h-9 items-center justify-center rounded-lg px-2 text-xs font-bold text-white"
-              style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
-            >
-              KDMG
-            </span>
+            <img
+              src="/api/image/logo%20app.png"
+              alt="Kent Daryl M. Gilo logo"
+              className="h-9 w-9 rounded-lg object-cover"
+            />
           </a>
           <div className="hidden items-center gap-7 text-xs font-medium md:flex" style={{ color: "var(--muted)" }}>
             {navLinks.map((link) => (
@@ -262,10 +264,6 @@ export function ModernPortfolio() {
                 {link.label}
               </a>
             ))}
-          </div>
-          <div className="flex items-center gap-3">
-            <TemplateToggle variant="modern" />
-            <ThemeToggle variant="modern" />
           </div>
         </div>
       </nav>
@@ -280,7 +278,7 @@ export function ModernPortfolio() {
           className="animate-blob absolute -bottom-24 left-0 h-96 w-96 rounded-full opacity-[var(--blob-opacity)] blur-3xl"
           style={{ backgroundColor: "var(--accent-2)", animationDelay: "-6s" }}
         />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-14 md:grid-cols-2">
+        <div className="relative mx-auto flex max-w-4xl flex-col items-center text-center">
           <div>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -325,7 +323,7 @@ export function ModernPortfolio() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="mt-9 flex flex-wrap items-center gap-4"
+              className="mt-9 flex flex-wrap items-center justify-center gap-4"
             >
               <a
                 href="#projects"
@@ -347,7 +345,7 @@ export function ModernPortfolio() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
-              className="mt-8 flex items-center gap-4"
+              className="mt-8 flex items-center justify-center gap-4"
               style={{ color: "var(--muted)" }}
             >
               <a href={SOCIALS.github} target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-110" aria-label="GitHub"><FaGithub className="text-xl" /></a>
@@ -356,28 +354,6 @@ export function ModernPortfolio() {
               <a href={`mailto:${SOCIALS.email}`} className="transition-transform hover:scale-110" aria-label="Email"><FaEnvelope className="text-xl" /></a>
             </motion.div>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3, type: "spring" }}
-            className="relative mx-auto"
-          >
-            <div
-              className="absolute inset-0 rounded-full opacity-40 blur-2xl"
-              style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))", transform: "scale(1.1)" }}
-            />
-            <img
-              src={PROFILE_IMAGE}
-              alt={PORTFOLIO_OWNER}
-              className="relative h-48 w-48 rounded-full object-cover md:h-64 md:w-64"
-              style={{
-                border: "6px solid var(--background)",
-                boxShadow: "0 0 0 4px var(--accent), 0 0 0 9px var(--accent-2), 0 25px 60px rgba(0,0,0,0.35)",
-              }}
-            />
-            <RotatingQuote variant="modern" />
-          </motion.div>
         </div>
 
         {/* Stats */}
@@ -392,7 +368,7 @@ export function ModernPortfolio() {
             {[
               { value: "9+", label: "PROJECTS BUILT" },
               { value: "20+", label: "TECHNOLOGIES" },
-              { value: "6", label: "SKILL SETS" },
+              { value: "9", label: "SKILL SETS" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <p
@@ -581,15 +557,21 @@ export function ModernPortfolio() {
               className="relative mx-auto"
             >
               <div
-                className="absolute -inset-3 rounded-3xl opacity-25 blur-xl"
-                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
-              />
-              <img
-                src={PROFILE_IMAGE}
-                alt={PORTFOLIO_OWNER}
-                className="relative h-56 w-56 rounded-3xl object-cover md:h-64 md:w-64"
-                style={{ border: "4px solid var(--background)", boxShadow: "0 0 0 3px var(--accent), 0 30px 60px rgba(0,0,0,0.3)" }}
-              />
+                className="relative rounded-full p-1"
+                style={{
+                  backgroundColor: "#1e222a",
+                  border: "1px solid rgba(96, 165, 250, 0.5)",
+                  boxShadow: "0 0 40px rgba(96, 165, 250, 0.45), 0 0 90px rgba(34, 211, 238, 0.25), 0 25px 60px rgba(0,0,0,0.35)",
+                }}
+              >
+                <img
+                  src={PROFILE_IMAGE}
+                  alt={PORTFOLIO_OWNER}
+                  className="relative h-56 w-56 rounded-full object-cover md:h-64 md:w-64"
+                  style={{ objectPosition: "50% 20%" }}
+                />
+              </div>
+              <RotatingQuote />
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
               {ABOUT_PARAGRAPHS.map((paragraph) => (
@@ -613,7 +595,7 @@ export function ModernPortfolio() {
         <div className="mx-auto max-w-5xl">
           <SectionHeading eyebrow="Let's talk" title="Contact" />
           <p className="-mt-6 mb-10 text-center text-sm md:text-base" style={{ color: "var(--muted)" }}>
-            {ROLE_LABEL} available for projects, collaborations, and new opportunities.
+            Available for projects, collaborations, and new opportunities.
           </p>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {[
@@ -671,7 +653,7 @@ export function ModernPortfolio() {
         )}
       </AnimatePresence>
 
-      <ChatBot variant="modern" />
+      <ChatBot />
     </div>
   )
 }

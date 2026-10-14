@@ -170,7 +170,7 @@ function findAnswer(input: string): string {
   return best ? best.answer : FALLBACK
 }
 
-export function ChatBot({ variant = "pixel" }: { variant?: "pixel" | "modern" }) {
+export function ChatBot() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -198,8 +198,7 @@ export function ChatBot({ variant = "pixel" }: { variant?: "pixel" | "modern" })
     }, 600)
   }
 
-  if (variant === "modern") {
-    return (
+  return (
       <>
         <button
           onClick={() => setOpen((v) => !v)}
@@ -310,99 +309,5 @@ export function ChatBot({ variant = "pixel" }: { variant?: "pixel" | "modern" })
           </div>
         )}
       </>
-    )
-  }
-
-  return (
-    <>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="pixel-btn w-14 h-14 flex items-center justify-center text-xl"
-        style={{ backgroundColor: "var(--background)", position: "fixed", bottom: "1.5rem", right: "1.5rem" }}
-        aria-label={open ? "Close chatbot" : "Open chatbot"}
-      >
-        {open ? <FaTimes /> : <FaCommentDots />}
-      </button>
-
-      {open && (
-        <div
-          className="w-[calc(100vw-3rem)] max-w-sm flex flex-col pixel-border"
-          style={{ backgroundColor: "var(--background)", height: "60vh", maxHeight: "480px", position: "fixed", bottom: "6rem", right: "1.5rem", zIndex: 50 }}
-        >
-          <div className="p-4 flex items-center gap-3 border-b-4" style={{ borderColor: "currentColor" }}>
-            <div className="text-xl"><FaRobot /></div>
-            <div>
-              <div className="text-xs md:text-sm font-semibold">PORTFOLIO BOT</div>
-              <div className="text-[10px]" style={{ opacity: 0.6 }}>ONLINE_ ASK ME ANYTHING</div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs leading-relaxed">
-            {messages.map((msg, i) => (
-              <div key={i} className={msg.from === "user" ? "flex justify-end" : "flex justify-start"}>
-                <div
-                  className="px-3 py-2 max-w-[85%] whitespace-pre-line break-words"
-                  style={{
-                    border: "3px solid currentColor",
-                    backgroundColor: msg.from === "user" ? "var(--progress)" : "var(--background)",
-                    color: msg.from === "user" ? "var(--background)" : "var(--foreground)",
-                  }}
-                >
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {typing && (
-              <div className="flex justify-start">
-                <div className="px-3 py-2 animate-blink" style={{ border: "3px solid currentColor" }}>
-                  THINKING_
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          {messages.length <= 1 && (
-            <div className="px-4 pb-3 space-y-2">
-              {QUICK_QUESTIONS.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => handleSend(q)}
-                  className="pixel-btn px-3 py-2 text-left w-full text-[11px]"
-                  style={{ backgroundColor: "var(--background)" }}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <form
-            className="flex gap-2 p-4 border-t-4"
-            style={{ borderColor: "currentColor" }}
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleSend(input)
-            }}
-          >
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="TYPE A QUESTION..."
-              className="flex-1 min-w-0 px-3 py-2 text-xs outline-none"
-              style={{ border: "3px solid currentColor", backgroundColor: "var(--background)", color: "var(--foreground)" }}
-            />
-            <button
-              type="submit"
-              className="pixel-btn px-3 py-2 text-sm"
-              style={{ backgroundColor: "var(--background)" }}
-              aria-label="Send message"
-            >
-              <FaPaperPlane />
-            </button>
-          </form>
-        </div>
-      )}
-    </>
   )
 }
