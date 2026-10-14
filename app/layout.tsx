@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -9,6 +9,12 @@ const poppinsFont = Poppins({
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
+const pixelFont = Press_Start_2P({
+  variable: "--font-pixel",
+  subsets: ["latin"],
+  weight: "400",
+});
+
 export const metadata: Metadata = {
   title: "Kent Daryl M. Gilo - Portfolio",
   description: "Full Stack Web Developer, DevOps Engineer, Cloud Engineer, UI/UX Designer, Graphic Designer, Multimedia Editor",
@@ -16,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${poppinsFont.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${poppinsFont.variable} ${pixelFont.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           {children}

@@ -270,16 +270,19 @@ export function ModernPortfolio() {
 
       {/* Hero */}
       <section id="home" className="relative overflow-hidden px-4 pt-32 pb-20 md:pt-40">
+        {/* Soft glow accents behind the grid */}
         <div
-          className="animate-blob absolute -top-20 right-10 h-80 w-80 rounded-full opacity-[var(--blob-opacity)] blur-3xl"
+          className="animate-blob absolute -top-24 right-5 h-72 w-72 rounded-full opacity-[var(--blob-opacity)] blur-3xl"
           style={{ backgroundColor: "var(--accent)" }}
         />
         <div
-          className="animate-blob absolute -bottom-24 left-0 h-96 w-96 rounded-full opacity-[var(--blob-opacity)] blur-3xl"
+          className="animate-blob absolute -bottom-20 left-0 h-80 w-80 rounded-full opacity-[var(--blob-opacity)] blur-3xl"
           style={{ backgroundColor: "var(--accent-2)", animationDelay: "-6s" }}
         />
-        <div className="relative mx-auto flex max-w-4xl flex-col items-center text-center">
-          <div>
+        {/* Grid pattern above the glows */}
+        <div className="grid-bg pointer-events-none absolute inset-0" aria-hidden="true" />
+        <div className="relative mx-auto flex w-full max-w-[32rem] flex-col items-center text-center sm:max-w-[40rem] md:max-w-[48rem] lg:max-w-[56rem] xl:max-w-[60rem] 2xl:max-w-[64rem]">
+          <div className="flex w-full flex-col items-center">
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -292,7 +295,11 @@ export function ModernPortfolio() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-3xl font-extrabold leading-tight md:text-5xl"
+              className="leading-tight"
+              style={{
+                fontFamily: "var(--font-pixel), monospace",
+                fontSize: "clamp(1rem, 2.9vw, 2.625rem)",
+              }}
             >
               {PORTFOLIO_OWNER}
             </motion.h1>
@@ -300,11 +307,12 @@ export function ModernPortfolio() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mt-4 text-lg font-semibold md:text-2xl"
+              className="mt-4 font-semibold"
               style={{
                 background: "linear-gradient(90deg, var(--accent), var(--accent-2))",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
+                fontSize: "clamp(1.125rem, 2.5vw, 1.875rem)",
               }}
             >
               <Typewriter />
@@ -313,8 +321,8 @@ export function ModernPortfolio() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="mt-6 max-w-md text-sm leading-relaxed md:text-base"
-              style={{ color: "var(--muted)" }}
+              className="mt-6 max-w-md leading-relaxed md:max-w-xl 2xl:max-w-2xl"
+              style={{ color: "var(--muted)", fontSize: "clamp(0.875rem, 1.3vw, 1.125rem)" }}
             >
               Full Stack Developer, DevOps Engineer, Cloud Engineer, and Graphic Designer — I blend engineering
               with creativity to build elegant, reliable, and beautiful digital experiences.
@@ -357,7 +365,7 @@ export function ModernPortfolio() {
         </div>
 
         {/* Stats */}
-        <div className="relative mx-auto mt-20 max-w-4xl">
+        <div className="relative mx-auto mt-20 max-w-4xl 2xl:max-w-5xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -372,11 +380,13 @@ export function ModernPortfolio() {
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <p
-                  className="text-2xl font-extrabold md:text-4xl"
+                  className="font-extrabold"
                   style={{
                     background: "linear-gradient(90deg, var(--accent), var(--accent-2))",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
+                    fontFamily: "var(--font-pixel), monospace",
+                    fontSize: "clamp(0.875rem, 1.5vw, 1.375rem)",
                   }}
                 >
                   {stat.value}

@@ -11,6 +11,7 @@
   --accent-2: #06b6d4;
   --border-color: #e5e7eb;
   --blob-opacity: 0.35;
+  --grid-line: rgba(0, 0, 0, 0.06);
 }
 
 .dark {
@@ -24,6 +25,7 @@
   --accent-2: #22d3ee;
   --border-color: #26262b;
   --blob-opacity: 0.3;
+  --grid-line: rgba(255, 255, 255, 0.075);
 }
 
 @theme inline {
@@ -36,10 +38,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
 }
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 @keyframes float {
@@ -69,6 +73,17 @@ html {
 
 .animate-blob {
   animation: blob-float 12s ease-in-out infinite;
+}
+
+/* Subtle technical grid background (Vercel/Linear style) */
+.grid-bg {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: center top;
+  mask-image: radial-gradient(ellipse 100% 85% at 50% 30%, black 55%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 85% at 50% 30%, black 55%, transparent 100%);
 }
 
 @keyframes type-bar {
