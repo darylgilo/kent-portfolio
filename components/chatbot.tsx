@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Lottie } from "lottie-react"
-import { FaRobot, FaPaperPlane } from "react-icons/fa"
+import { FaRobot, FaPaperPlane, FaTimes, FaSmile } from "react-icons/fa"
 
 function LottiePlayer({
   animationData,
@@ -246,22 +246,48 @@ export function ChatBot() {
 
   return (
       <>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="flex h-24 w-24 items-center justify-center transition-transform hover:scale-110"
+        <div
+          className="animate-float"
           style={{
             position: "fixed",
             bottom: "1.5rem",
             right: "1.5rem",
-            background: "transparent",
-            border: "none",
-            boxShadow: "none",
             zIndex: 60,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.35rem",
           }}
-          aria-label={open ? "Close chatbot" : "Open chatbot"}
         >
-          <ChatBotIcon />
-        </button>
+          {!open && (
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-label="Open chatbot"
+              className="px-4 py-2 text-xs font-semibold rounded-2xl shadow-lg transition-transform hover:scale-105 flex items-center justify-center gap-1.5 text-center"
+              style={{
+                backgroundColor: "var(--card)",
+                color: "var(--foreground)",
+                border: "1px solid var(--border-color)",
+              }}
+            >
+              <FaSmile aria-hidden="true" />
+              <span>Hi</span>
+            </button>
+          )}
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex h-24 w-24 items-center justify-center transition-transform hover:scale-110"
+            style={{
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+            }}
+            aria-label={open ? "Close chatbot" : "Open chatbot"}
+          >
+            <ChatBotIcon />
+          </button>
+        </div>
 
         {open && (
           <div
@@ -282,10 +308,19 @@ export function ChatBot() {
               style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
             >
               <div className="text-xl"><FaRobot /></div>
-              <div>
-                <div className="text-xs md:text-sm font-semibold">PORTFOLIO BOT</div>
-                <div className="text-[10px]" style={{ opacity: 0.7 }}>ONLINE_ ASK ME ANYTHING</div>
+              <div className="flex-1">
+                <div className="text-xs md:text-sm font-semibold">PORTFOLIO AI ASSISTANT</div>
+                <div className="text-[10px]" style={{ opacity: 0.7 }}>ASK ME ANYTHING</div>
               </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close chatbot"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              >
+                <FaTimes />
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs leading-relaxed">
