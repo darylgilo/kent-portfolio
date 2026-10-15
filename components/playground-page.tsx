@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { FaArrowLeft, FaPlay, FaRedo, FaTerminal, FaEye, FaCode, FaBookOpen, FaFlask } from "react-icons/fa"
+import { FaArrowLeft, FaPlay, FaRedo, FaTerminal, FaEye, FaCode, FaBookOpen, FaFlask, FaChevronRight } from "react-icons/fa"
 import {
+  MODULE_CATEGORIES,
   PLAYGROUND_MODULES,
   lessonsForModule,
+  modulesForCategory,
   type Lesson,
 } from "@/lib/playground-data"
 
@@ -25,7 +27,7 @@ function ReactStateDemo() {
   const [count, setCount] = useState(0)
   return (
     <div
-      className="flex h-full min-h-[220px] flex-col items-center justify-center gap-4 p-6"
+      className="flex min-h-[220px] flex-1 flex-col items-center justify-center gap-4 p-6"
       style={{ backgroundColor: "var(--background)" }}
     >
       <p className="font-mono text-sm" style={{ color: "var(--muted)" }}>
@@ -55,6 +57,35 @@ function buildPreviewDoc(code: string, captureConsole: boolean): string {
   return "<!DOCTYPE html><html><head><meta charset=\"utf-8\" />" + hook + "</head><body>" + code + "</body></html>"
 }
 
+type SidebarNode =
+  | { kind: "lesson"; lesson: Lesson }
+  | { kind: "group"; label: string; lessons: Lesson[] }
+
+/**
+ * Flattens a module's lessons into sidebar rows: plain lessons stay as-is, and
+ * lessons sharing a `group` field become ONE group row (rendered as a collapsible
+ * dropdown) placed at the position of the first member.
+ */
+function buildSidebarNodes(lessons: Lesson[]): SidebarNode[] {
+  const nodes: SidebarNode[] = []
+  const groupIndex = new Map<string, number>()
+  for (const lesson of lessons) {
+    if (!lesson.group) {
+      nodes.push({ kind: "lesson", lesson })
+      continue
+    }
+    const existing = groupIndex.get(lesson.group)
+    if (existing !== undefined) {
+      const node = nodes[existing]
+      if (node.kind === "group") node.lessons.push(lesson)
+    } else {
+      groupIndex.set(lesson.group, nodes.length)
+      nodes.push({ kind: "group", label: lesson.group, lessons: [lesson] })
+    }
+  }
+  return nodes
+}
+
 export function PlaygroundPage() {
   const [moduleId, setModuleId] = useState("html")
   const lessons = useMemo(() => lessonsForModule(moduleId), [moduleId])
@@ -66,7 +97,54 @@ export function PlaygroundPage() {
   const [runToken, setRunToken] = useState(0)
   const [logs, setLogs] = useState<{ text: string; kind: "log" | "error" }[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const renderLessonBtn = (l: Lesson, nested: boolean) => (
+    <button
+      key={l.id}
+      onClick={() => selectLesson(l.id)}
+      className={`block w-full py-3 text-left text-sm ${nested ? "pl-8 pr-4" : "px-4"}`}
+      style={{
+        borderLeft: l.id === lessonId ? "3px solid var(--accent)" : "3px solid transparent",
+        backgroundColor: l.id === lessonId ? "var(--card-hover)" : "transparent",
+      }}
+    >
+      <span className="font-semibold">{l.title}</span>
+      <span className="block text-xs" style={{ color: "var(--muted)" }}>{l.description}</span>
+    </button>
+  )
+
+  const renderNode = (node: SidebarNode) => {
+    if (node.kind === "lesson") return renderLessonBtn(node.lesson, false)
+    const gkey = `${moduleId}:${node.label}`
+    const isOpen = openGroups[gkey] ?? true
+    const activeInside = node.lessons.some((l) => l.id === lessonId)
+    return (
+      <div key={gkey} className="pt-1">
+        <button
+          onClick={() => setOpenGroups((prev) => ({ ...prev, [gkey]: !(prev[gkey] ?? true) }))}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold tracking-widest transition-colors hover:bg-white/5"
+          style={{ color: "var(--accent)" }}
+          aria-expanded={isOpen}
+        >
+          <FaChevronRight className="transition-transform" style={{ transform: isOpen ? "rotate(90deg)" : "none" }} />
+          <span>{node.label.toUpperCase()}</span>
+          {activeInside && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--accent)" }} />}
+          <span className="ml-auto font-mono text-[10px]" style={{ color: "var(--muted)" }}>
+            {node.lessons.length}
+          </span>
+        </button>
+        {isOpen && (
+          <div className="ml-3 space-y-1 border-l pl-2" style={{ borderColor: "var(--border-color)" }}>
+            {node.lessons.map((l) => (
+              <div key={l.id}>{renderLessonBtn(l, true)}</div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   useEffect(() => {
     const first = lessonsForModule(moduleId)[0]
@@ -95,6 +173,7 @@ export function PlaygroundPage() {
   }, [code, lesson?.id])
 
   const activeModule = PLAYGROUND_MODULES.find((m) => m.id === moduleId)
+  const activeCategoryId = activeModule?.category ?? MODULE_CATEGORIES[0].id
   const isLive = lesson?.previewType === "html" || lesson?.previewType === "css"
   const isJS = lesson?.previewType === "javascript"
   const isReactDemo = lesson?.previewType === "react"
@@ -152,10 +231,11 @@ export function PlaygroundPage() {
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-transform hover:scale-105"
+            aria-label="Back to portfolio"
+            className="flex items-center justify-center rounded-full p-2 transition-transform hover:scale-105"
             style={{ border: "1px solid var(--border-color)" }}
           >
-            <FaArrowLeft className="text-[10px]" /> Portfolio
+            <FaArrowLeft className="text-[10px]" />
           </Link>
           <div className="min-w-0">
             <h1 className="truncate text-sm font-bold md:text-base">DEV Playground</h1>
@@ -166,7 +246,27 @@ export function PlaygroundPage() {
         </div>
         <div className="mx-auto max-w-7xl px-4 pb-3">
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {PLAYGROUND_MODULES.map((m) => (
+            {MODULE_CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => {
+                  if (c.id === activeCategoryId) return
+                  const first = modulesForCategory(c.id)[0]
+                  if (first) setModuleId(first.id)
+                }}
+                className="shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold tracking-widest transition-all hover:scale-105"
+                style={
+                  c.id === activeCategoryId
+                    ? { backgroundColor: "var(--card-hover)", border: "1px solid transparent", color: "var(--accent)" }
+                    : { backgroundColor: "var(--card)", border: "1px solid var(--border-color)", color: "var(--muted)" }
+                }
+              >
+                {c.label.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+            {modulesForCategory(activeCategoryId).map((m) => (
               <button
                 key={m.id}
                 onClick={() => setModuleId(m.id)}
@@ -199,38 +299,22 @@ export function PlaygroundPage() {
           </button>
           {sidebarOpen && (
             <div className="mt-2 overflow-hidden rounded-xl" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border-color)" }}>
-              {lessons.map((l) => (
-                <button key={l.id} onClick={() => selectLesson(l.id)} className="block w-full px-4 py-3 text-left text-sm">
-                  <span className="font-semibold">{l.title}</span>
-                  <span className="block text-xs" style={{ color: "var(--muted)" }}>{l.description}</span>
-                </button>
-              ))}
+              <div className="max-h-[70vh] overflow-y-auto py-1">
+                {buildSidebarNodes(lessons).map((node) => renderNode(node))}
+              </div>
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr]">
-          <aside className="hidden overflow-hidden rounded-2xl lg:block" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border-color)" }}>
+          <aside className="hidden self-start overflow-hidden rounded-2xl lg:block" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border-color)" }}>
             <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
               <p className="text-[10px] font-bold tracking-widest" style={{ color: "var(--accent)" }}>
                 {activeModule?.label.toUpperCase()} LESSONS
               </p>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto">
-              {lessons.map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => selectLesson(l.id)}
-                  className="block w-full px-4 py-3 text-left text-sm"
-                  style={{
-                    borderLeft: l.id === lesson?.id ? "3px solid var(--accent)" : "3px solid transparent",
-                    backgroundColor: l.id === lesson?.id ? "var(--card-hover)" : "transparent",
-                  }}
-                >
-                  <span className="font-semibold">{l.title}</span>
-                  <span className="block text-xs" style={{ color: "var(--muted)" }}>{l.description}</span>
-                </button>
-              ))}
+            <div className="max-h-[70vh] overflow-y-auto py-1">
+              {buildSidebarNodes(lessons).map((node) => renderNode(node))}
             </div>
           </aside>
 
@@ -287,7 +371,7 @@ export function PlaygroundPage() {
 
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <section className="overflow-hidden rounded-2xl" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border-color)" }}>
+              <section className="flex flex-col overflow-hidden rounded-2xl" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border-color)" }}>
                 <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: "1px solid var(--border-color)" }}>
                   <FaCode className="text-xs" style={{ color: "var(--accent)" }} />
                   <span className="text-xs font-bold">CODE EDITOR</span>
@@ -313,7 +397,7 @@ export function PlaygroundPage() {
                     </button>
                   </div>
                 </div>
-                <div className="flex">
+                <div className="flex flex-1">
                   <div className="select-none px-3 py-3 text-right font-mono text-[11px] leading-6" style={{ color: "var(--muted)", backgroundColor: "var(--background)" }} aria-hidden="true">
                     {Array.from({ length: lineCount }, (_, i) => (
                       <div key={i}>{i + 1}</div>
@@ -336,7 +420,7 @@ export function PlaygroundPage() {
               </section>
 
 
-              <section className="overflow-hidden rounded-2xl" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border-color)" }}>
+              <section className="flex flex-col overflow-hidden rounded-2xl" style={{ backgroundColor: "var(--card)", border: "1px solid var(--border-color)" }}>
                 <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: "1px solid var(--border-color)" }}>
                   <FaEye className="text-xs" style={{ color: "var(--accent)" }} />
                   <span className="text-xs font-bold">LIVE PREVIEW</span>
@@ -344,7 +428,7 @@ export function PlaygroundPage() {
                 {isReactDemo ? (
                   <ReactStateDemo />
                 ) : lesson?.previewType === "static" ? (
-                  <div className="space-y-4 p-5">
+                  <div className="flex-1 space-y-4 p-5">
                     {lesson?.sampleTable && (
                       <div>
                         <p className="mb-2 text-[11px] font-bold tracking-widest" style={{ color: "var(--muted)" }}>SAMPLE TABLE</p>
@@ -378,14 +462,16 @@ export function PlaygroundPage() {
                     )}
                   </div>
                 ) : (
-                  <iframe
-                    key={(lesson?.id ?? "none") + "-" + runToken}
-                    title="Live preview"
-                    sandbox="allow-scripts"
-                    srcDoc={previewDoc}
-                    className="h-[320px] w-full"
-                    style={{ backgroundColor: "#ffffff" }}
-                  />
+                  <div className="min-h-[320px] flex-1">
+                    <iframe
+                      key={(lesson?.id ?? "none") + "-" + runToken}
+                      title="Live preview"
+                      sandbox="allow-scripts"
+                      srcDoc={previewDoc}
+                      className="h-full w-full"
+                      style={{ backgroundColor: "#ffffff" }}
+                    />
+                  </div>
                 )}
               </section>
             </div>

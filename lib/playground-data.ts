@@ -3,6 +3,8 @@ export type LessonPreviewType = "html" | "css" | "javascript" | "react" | "stati
 export type Lesson = {
   id: string
   moduleId: string
+  /** Optional sidebar group label — grouped lessons render under one collapsible header (e.g. "Hooks"). */
+  group?: string
   title: string
   description: string
   explanation: string
@@ -16,29 +18,62 @@ export type Lesson = {
   sections?: { title: string; content: string }[]
 }
 
+export type ModuleCategoryId =
+  | "frontend"
+  | "backend"
+  | "database"
+  | "devops"
+  | "fullstack"
+  | "framework"
+  | "library"
+
+export type ModuleCategory = {
+  id: ModuleCategoryId
+  label: string
+}
+
+/** Ordered group labels rendered as the top tab row in the playground header. */
+export const MODULE_CATEGORIES: ModuleCategory[] = [
+  { id: "frontend", label: "Front End" },
+  { id: "backend", label: "Back End" },
+  { id: "database", label: "Database" },
+  { id: "devops", label: "DevOps" },
+  { id: "fullstack", label: "Full Stack" },
+  { id: "framework", label: "Framework" },
+  { id: "library", label: "Library" },
+]
+
 export type Module = {
   id: string
   label: string
   description: string
+  /** Header group this module's tab lives under. */
+  category: ModuleCategoryId
 }
 
 export const PLAYGROUND_MODULES: Module[] = [
-  { id: "html", label: "HTML", description: "Structure of the web — elements, text, links, forms." },
-  { id: "css", label: "CSS", description: "Styling — colors, layout, flexbox, transforms." },
-  { id: "tailwind", label: "Tailwind", description: "Utility-first styling, compared against raw CSS." },
-  { id: "javascript", label: "JavaScript", description: "Logic, DOM, events, async code." },
-  { id: "typescript", label: "TypeScript", description: "Typed JavaScript — safer, clearer code." },
-  { id: "react", label: "React", description: "Components, props, and state." },
-  { id: "nextjs", label: "Next.js", description: "App Router, routing, and rendering concepts." },
-  { id: "php", label: "PHP", description: "Server-side syntax and expected output." },
-  { id: "sql", label: "SQL", description: "Queries with sample tables and results." },
-  { id: "github", label: "Git & GitHub", description: "Commands with example terminal output." },
+  { id: "html", label: "HTML", description: "Structure of the web — elements, text, links, forms.", category: "frontend" },
+  { id: "css", label: "CSS", description: "Styling — colors, layout, flexbox, transforms.", category: "frontend" },
+  { id: "tailwind", label: "Tailwind", description: "Utility-first styling, compared against raw CSS.", category: "framework" },
+  { id: "javascript", label: "JavaScript", description: "Logic, DOM, events, async code.", category: "frontend" },
+  { id: "typescript", label: "TypeScript", description: "Typed JavaScript — safer, clearer code.", category: "fullstack" },
+  { id: "react", label: "React", description: "Components, props, and state.", category: "library" },
+  { id: "nextjs", label: "Next.js", description: "App Router, routing, and rendering concepts.", category: "fullstack" },
+  { id: "php", label: "PHP", description: "Server-side syntax and expected output.", category: "backend" },
+  { id: "sql", label: "SQL", description: "Queries with sample tables and results.", category: "database" },
+  { id: "github", label: "Git & GitHub", description: "Commands with example terminal output.", category: "devops" },
 ]
+
+/** Modules belonging to one header group, in tab order. */
+export function modulesForCategory(category: ModuleCategoryId): Module[] {
+  return PLAYGROUND_MODULES.filter((m) => m.category === category)
+}
 
 export const PLAYGROUND_LESSONS: Lesson[] = [
   {
     id: "html-text-headings",
     moduleId: "html",
+    group: "Page Elements",
     title: "Text & Headings",
     description: "Headings, paragraphs, and basic text structure.",
     explanation:
@@ -78,6 +113,7 @@ export const PLAYGROUND_LESSONS: Lesson[] = [
   {
     id: "css-flexbox",
     moduleId: "css",
+    group: "Layout",
     title: "Flexbox Centering",
     description: "Center anything with three lines of CSS.",
     explanation:
@@ -91,6 +127,7 @@ export const PLAYGROUND_LESSONS: Lesson[] = [
   {
     id: "css-transform",
     moduleId: "css",
+    group: "Motion",
     title: "Transforms",
     description: "Rotate, scale, and move elements.",
     explanation:
@@ -108,6 +145,7 @@ export const PLAYGROUND_LESSONS_PART2: Lesson[] = [
   {
     id: "tailwind-flex-center",
     moduleId: "tailwind",
+    group: "Layout",
     title: "Flex Centering in Tailwind",
     description: "The same centering, the utility way.",
     explanation:
@@ -134,6 +172,7 @@ export const PLAYGROUND_LESSONS_PART2: Lesson[] = [
   {
     id: "js-events",
     moduleId: "javascript",
+    group: "DOM",
     title: "Events",
     description: "React to clicks with addEventListener.",
     explanation:
@@ -147,6 +186,7 @@ export const PLAYGROUND_LESSONS_PART2: Lesson[] = [
   {
     id: "react-state",
     moduleId: "react",
+    group: "Hooks",
     title: "State with useState",
     description: "A counter that updates live.",
     explanation:
@@ -191,6 +231,7 @@ export const PLAYGROUND_LESSONS_PART3: Lesson[] = [
   {
     id: "nextjs-routing",
     moduleId: "nextjs",
+    group: "Routing",
     title: "App Router Basics",
     description: "Folders become routes.",
     explanation:
@@ -219,6 +260,7 @@ export const PLAYGROUND_LESSONS_PART3: Lesson[] = [
   {
     id: "sql-select",
     moduleId: "sql",
+    group: "CRUD",
     title: "SELECT and WHERE",
     description: "Ask the database a question.",
     explanation:
@@ -258,6 +300,7 @@ export const PLAYGROUND_LESSONS_PART4: Lesson[] = [
   {
     id: "html-links",
     moduleId: "html",
+    group: "Page Elements",
     title: "Links",
     description: "Navigate with anchor tags.",
     explanation:
@@ -271,6 +314,7 @@ export const PLAYGROUND_LESSONS_PART4: Lesson[] = [
   {
     id: "html-lists",
     moduleId: "html",
+    group: "Page Elements",
     title: "Lists",
     description: "Ordered, unordered, and nested lists.",
     explanation:
@@ -284,6 +328,7 @@ export const PLAYGROUND_LESSONS_PART4: Lesson[] = [
   {
     id: "html-tables",
     moduleId: "html",
+    group: "Page Elements",
     title: "Tables",
     description: "Rows and columns of data.",
     explanation:
@@ -297,6 +342,7 @@ export const PLAYGROUND_LESSONS_PART4: Lesson[] = [
   {
     id: "html-semantic",
     moduleId: "html",
+    group: "Semantics & A11y",
     title: "Semantic HTML in Depth",
     description: "Meaningful page structure.",
     explanation:
@@ -310,6 +356,7 @@ export const PLAYGROUND_LESSONS_PART4: Lesson[] = [
   {
     id: "html-images",
     moduleId: "html",
+    group: "Page Elements",
     title: "Images",
     description: "Show pictures with alt text.",
     explanation:
@@ -353,6 +400,7 @@ export const PLAYGROUND_LESSONS_PART5: Lesson[] = [
   {
     id: "css-grid",
     moduleId: "css",
+    group: "Layout",
     title: "Grid",
     description: "Two-dimensional layouts.",
     explanation:
@@ -366,6 +414,7 @@ export const PLAYGROUND_LESSONS_PART5: Lesson[] = [
   {
     id: "css-position",
     moduleId: "css",
+    group: "Layout",
     title: "Positioning",
     description: "Static, relative, absolute.",
     explanation:
@@ -383,6 +432,7 @@ export const PLAYGROUND_LESSONS_PART6: Lesson[] = [
   {
     id: "css-transitions",
     moduleId: "css",
+    group: "Motion",
     title: "Transitions",
     description: "Smooth state changes on hover.",
     explanation:
@@ -396,6 +446,7 @@ export const PLAYGROUND_LESSONS_PART6: Lesson[] = [
   {
     id: "css-animations",
     moduleId: "css",
+    group: "Motion",
     title: "Animations",
     description: "Keyframes that loop forever.",
     explanation:
@@ -465,6 +516,7 @@ export const PLAYGROUND_LESSONS_PART7: Lesson[] = [
   {
     id: "tw-responsive",
     moduleId: "tailwind",
+    group: "Variants",
     title: "Responsive Breakpoints",
     description: "Mobile-first prefixed classes.",
     explanation:
@@ -478,6 +530,7 @@ export const PLAYGROUND_LESSONS_PART7: Lesson[] = [
   {
     id: "tw-hover",
     moduleId: "tailwind",
+    group: "Variants",
     title: "Hover States",
     description: "Interactive variants.",
     explanation:
@@ -547,6 +600,7 @@ export const PLAYGROUND_LESSONS_PART8: Lesson[] = [
   {
     id: "js-fetch",
     moduleId: "javascript",
+    group: "APIs",
     title: "Fetch and JSON",
     description: "Load data with async/await.",
     explanation:
@@ -564,6 +618,7 @@ export const PLAYGROUND_LESSONS_PART9: Lesson[] = [
   {
     id: "ts-union",
     moduleId: "typescript",
+    group: "Advanced Types",
     title: "Union and Intersection Types",
     description: "This OR that, and this AND that.",
     explanation:
@@ -578,6 +633,7 @@ export const PLAYGROUND_LESSONS_PART9: Lesson[] = [
   {
     id: "ts-generics",
     moduleId: "typescript",
+    group: "Advanced Types",
     title: "Generics",
     description: "Types as parameters.",
     explanation:
@@ -605,6 +661,7 @@ export const PLAYGROUND_LESSONS_PART9: Lesson[] = [
   {
     id: "nextjs-link",
     moduleId: "nextjs",
+    group: "Routing",
     title: "Link and Navigation",
     description: "Client-side page switches.",
     explanation:
@@ -654,6 +711,7 @@ export const PLAYGROUND_LESSONS_PART9: Lesson[] = [
   {
     id: "git-branch",
     moduleId: "github",
+    group: "Collaboration",
     title: "Branches and Merge",
     description: "Work without breaking main.",
     explanation:
@@ -740,6 +798,7 @@ export const PLAYGROUND_LESSONS_PART10: Lesson[] = [
   {
     id: "html-accessibility",
     moduleId: "html",
+    group: "Semantics & A11y",
     title: "Accessibility",
     description: "Labels, alt, and roles.",
     explanation:
@@ -753,6 +812,7 @@ export const PLAYGROUND_LESSONS_PART10: Lesson[] = [
   {
     id: "html-html5",
     moduleId: "html",
+    group: "Semantics & A11y",
     title: "HTML5 Concepts",
     description: "Modern input types and media.",
     explanation:
@@ -810,6 +870,7 @@ export const PLAYGROUND_LESSONS_PART11: Lesson[] = [
   {
     id: "css-display",
     moduleId: "css",
+    group: "Layout",
     title: "Display",
     description: "Block vs inline vs inline-block.",
     explanation:
@@ -879,6 +940,7 @@ export const PLAYGROUND_LESSONS_PART12: Lesson[] = [
   {
     id: "tw-layout",
     moduleId: "tailwind",
+    group: "Layout",
     title: "Layout",
     description: "Container, flex, grid.",
     explanation:
@@ -948,6 +1010,7 @@ export const PLAYGROUND_LESSONS_PART13: Lesson[] = [
   {
     id: "tw-flexbox",
     moduleId: "tailwind",
+    group: "Layout",
     title: "Flexbox",
     description: "flex, gap, justify.",
     explanation:
@@ -961,6 +1024,7 @@ export const PLAYGROUND_LESSONS_PART13: Lesson[] = [
   {
     id: "tw-grid",
     moduleId: "tailwind",
+    group: "Layout",
     title: "Grid",
     description: "grid-cols made easy.",
     explanation:
@@ -974,6 +1038,7 @@ export const PLAYGROUND_LESSONS_PART13: Lesson[] = [
   {
     id: "tw-dark",
     moduleId: "tailwind",
+    group: "Variants",
     title: "Dark Mode",
     description: "dark: variant.",
     explanation:
@@ -1099,6 +1164,7 @@ export const PLAYGROUND_LESSONS_PART15: Lesson[] = [
   {
     id: "js-dom",
     moduleId: "javascript",
+    group: "DOM",
     title: "DOM",
     description: "Change the page live.",
     explanation:
@@ -1112,6 +1178,7 @@ export const PLAYGROUND_LESSONS_PART15: Lesson[] = [
   {
     id: "js-forms",
     moduleId: "javascript",
+    group: "DOM",
     title: "Forms",
     description: "Read input values.",
     explanation:
@@ -1125,6 +1192,7 @@ export const PLAYGROUND_LESSONS_PART15: Lesson[] = [
   {
     id: "js-json",
     moduleId: "javascript",
+    group: "Async",
     title: "JSON",
     description: "Stringify and parse.",
     explanation:
@@ -1138,6 +1206,7 @@ export const PLAYGROUND_LESSONS_PART15: Lesson[] = [
   {
     id: "js-promises",
     moduleId: "javascript",
+    group: "Async",
     title: "Promises",
     description: "Future values with then.",
     explanation:
@@ -1151,6 +1220,7 @@ export const PLAYGROUND_LESSONS_PART15: Lesson[] = [
   {
     id: "js-async",
     moduleId: "javascript",
+    group: "Async",
     title: "Async and Await",
     description: "Cleaner async code.",
     explanation:
@@ -1249,6 +1319,7 @@ export const PLAYGROUND_LESSONS_PART16: Lesson[] = [
   {
     id: "ts-functions",
     moduleId: "typescript",
+    group: "Advanced Types",
     title: "Function Types",
     description: "Typed inputs and outputs.",
     explanation:
@@ -1265,6 +1336,7 @@ export const PLAYGROUND_LESSONS_PART17: Lesson[] = [
   {
     id: "ts-narrow",
     moduleId: "typescript",
+    group: "Advanced Types",
     title: "Type Narrowing",
     description: "typeof guards.",
     explanation:
@@ -1279,6 +1351,7 @@ export const PLAYGROUND_LESSONS_PART17: Lesson[] = [
   {
     id: "ts-optional",
     moduleId: "typescript",
+    group: "Advanced Types",
     title: "Optional Properties",
     description: "Maybe-there fields.",
     explanation:
@@ -1293,6 +1366,7 @@ export const PLAYGROUND_LESSONS_PART17: Lesson[] = [
   {
     id: "ts-utility",
     moduleId: "typescript",
+    group: "Advanced Types",
     title: "Utility Types",
     description: "Partial, Pick, Omit.",
     explanation:
@@ -1307,6 +1381,7 @@ export const PLAYGROUND_LESSONS_PART17: Lesson[] = [
   {
     id: "ts-advanced",
     moduleId: "typescript",
+    group: "Advanced Types",
     title: "Advanced TS",
     description: "readonly and as const.",
     explanation:
@@ -1409,6 +1484,7 @@ export const PLAYGROUND_LESSONS_PART19: Lesson[] = [
   {
     id: "react-effect",
     moduleId: "react",
+    group: "Hooks",
     title: "useEffect",
     description: "Sync with the outside.",
     explanation:
@@ -1423,6 +1499,7 @@ export const PLAYGROUND_LESSONS_PART19: Lesson[] = [
   {
     id: "react-ref",
     moduleId: "react",
+    group: "Hooks",
     title: "useRef",
     description: "Hold without rendering.",
     explanation:
@@ -1437,6 +1514,7 @@ export const PLAYGROUND_LESSONS_PART19: Lesson[] = [
   {
     id: "react-context",
     moduleId: "react",
+    group: "Hooks",
     title: "Context",
     description: "Share without prop drilling.",
     explanation:
@@ -1451,6 +1529,7 @@ export const PLAYGROUND_LESSONS_PART19: Lesson[] = [
   {
     id: "react-hooks",
     moduleId: "react",
+    group: "Hooks",
     title: "Custom Hooks",
     description: "Extract reusable logic.",
     explanation:
@@ -1495,6 +1574,7 @@ export const PLAYGROUND_LESSONS_PART20: Lesson[] = [
   {
     id: "nextjs-pages",
     moduleId: "nextjs",
+    group: "Routing",
     title: "Pages",
     description: "page.tsx is a URL.",
     explanation:
@@ -1509,6 +1589,7 @@ export const PLAYGROUND_LESSONS_PART20: Lesson[] = [
   {
     id: "nextjs-layouts",
     moduleId: "nextjs",
+    group: "Routing",
     title: "Layouts",
     description: "Shared wrappers.",
     explanation:
@@ -1523,6 +1604,7 @@ export const PLAYGROUND_LESSONS_PART20: Lesson[] = [
   {
     id: "nextjs-dynamic",
     moduleId: "nextjs",
+    group: "Routing",
     title: "Dynamic Routes",
     description: "Brackets mean params.",
     explanation:
@@ -1695,6 +1777,7 @@ export const PLAYGROUND_LESSONS_PART22: Lesson[] = [
   {
     id: "sql-insert",
     moduleId: "sql",
+    group: "CRUD",
     title: "INSERT and UPDATE",
     description: "Add and change rows.",
     explanation:
@@ -1711,6 +1794,7 @@ export const PLAYGROUND_LESSONS_PART23: Lesson[] = [
   {
     id: "sql-delete",
     moduleId: "sql",
+    group: "CRUD",
     title: "DELETE",
     description: "Remove rows safely.",
     explanation:
@@ -1833,6 +1917,7 @@ export const PLAYGROUND_LESSONS_PART24: Lesson[] = [
   {
     id: "git-remote",
     moduleId: "github",
+    group: "Collaboration",
     title: "Remotes, Push, Pull",
     description: "Sync with GitHub.",
     explanation:
@@ -1847,6 +1932,7 @@ export const PLAYGROUND_LESSONS_PART24: Lesson[] = [
   {
     id: "git-pr",
     moduleId: "github",
+    group: "Collaboration",
     title: "Pull Requests",
     description: "Propose, review, merge.",
     explanation:
@@ -1861,6 +1947,7 @@ export const PLAYGROUND_LESSONS_PART24: Lesson[] = [
   {
     id: "git-workflow",
     moduleId: "github",
+    group: "Collaboration",
     title: "GitHub Workflow",
     description: "The daily loop.",
     explanation:
@@ -1892,6 +1979,7 @@ export const PLAYGROUND_LESSONS_PART25: Lesson[] = [
   {
     id: "nextjs-route-handlers",
     moduleId: "nextjs",
+    group: "Routing",
     title: "Route Handlers",
     description: "API endpoints inside your routes.",
     explanation:
@@ -2036,6 +2124,38 @@ export const PLAYGROUND_LESSONS_PART27: Lesson[] = [
           "The DOM (Document Object Model) is the browser's live object tree of your HTML — JavaScript can read and change it.\nSelect: document.querySelector(\"#button\") grabs an element.\nListen: element.addEventListener(\"click\", () => { ... }) runs code on click (also input, submit, keydown).\nUpdate: element.textContent = \"New!\", element.classList.add(\"active\"), element.style.color = \"red\".\nThe page updates without reloading — that's what makes a site feel like an app.\nTip: place <script> at the end of body (or wait for DOMContentLoaded) so elements exist before you select them.",
       },
     ],
+  },
+]
+
+export const PLAYGROUND_LESSONS_PART28: Lesson[] = [
+  {
+    id: "js-api",
+    moduleId: "javascript",
+    group: "APIs",
+    title: "REST & HTTP Fundamentals",
+    description: "Methods, URLs, and status codes.",
+    explanation:
+      "A REST API is a URL you talk to with an HTTP method: GET reads, POST creates, PUT or PATCH updates, DELETE removes. The server replies with a status code — 2xx means success, 4xx means the request was wrong (404 not found, 405 method not allowed), 5xx means the server broke. This lesson runs an offline mock server that behaves exactly like a real one; the next lesson calls a real URL with fetch().",
+    code: "<script>\n  // Mock server — behaves exactly like a real REST API, works offline\n  const posts = [{ id: 1, title: 'Hello' }];\n\n  function request(method, path, body) {\n    if (path !== '/posts' && path !== '/posts/1')\n      return { status: 404, body: { error: 'Not found' } };\n    if (method === 'GET') return { status: 200, body: posts };\n    if (method === 'POST') return { status: 201, body: { id: 2, ...body } };\n    if (method === 'DELETE') return { status: 204, body: null };\n    return { status: 405, body: { error: method + ' not allowed' } };\n  }\n\n  console.log('GET /posts ->', request('GET', '/posts'));\n  console.log('POST /posts ->', request('POST', '/posts', { title: 'New post' }));\n  console.log('DELETE /posts/1 ->', request('DELETE', '/posts/1'));\n  console.log('PATCH /posts/1 ->', request('PATCH', '/posts/1', { title: 'hi' }));\n  console.log('GET /missing ->', request('GET', '/missing'));\n</script>\n<p>Press Run. Then edit a method or path and run again to see the status change.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    topics: ["REST", "HTTP methods", "status codes"],
+  },
+  {
+    id: "react-fetch",
+    moduleId: "react",
+    title: "Data Fetching",
+    description: "loading, error, success — handle all three.",
+    explanation:
+      "Every data UI has three states: loading, error, success. useEffect runs the fetch after the component mounts ([] = run once), and setState moves the UI between them. Two gotchas: fetch() only rejects on network failure — a 404 or 500 still resolves, so always check res.ok before reading the body — and fetching belongs in an effect because it is a side effect: work that talks to the outside world.",
+    code: "type Post = { id: number; title: string };\ntype State = \"loading\" | \"error\" | \"done\";\n\nfunction PostList() {\n  const [posts, setPosts] = useState<Post[]>([]);\n  const [state, setState] = useState<State>(\"loading\");\n\n  useEffect(() => {\n    fetch(\"/api/posts\")\n      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))\n      .then((data) => {\n        setPosts(data);\n        setState(\"done\");\n      })\n      .catch(() => setState(\"error\"));\n  }, []);\n\n  if (state === \"loading\") return <p>Loading...</p>;\n  if (state === \"error\") return <p>Could not load posts.</p>;\n  return <ul>{posts.map((p) => <li key={p.id}>{p.title}</li>)}</ul>;\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["fetch", "useEffect", "loading state"],
+    expectedOutput:
+      "Shows Loading... first, then the list of posts — or the error line if the request fails. [] keeps the fetch running only once on mount.",
   },
 ]
 
@@ -2871,6 +2991,7 @@ export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
   ...PLAYGROUND_LESSONS_PART25,
   ...PLAYGROUND_LESSONS_PART26,
   ...PLAYGROUND_LESSONS_PART27,
+  ...PLAYGROUND_LESSONS_PART28,
 ].map((lesson) =>
   LESSON_SECTIONS[lesson.id] ? { ...lesson, sections: LESSON_SECTIONS[lesson.id] } : lesson
 )
@@ -2899,7 +3020,7 @@ const LESSON_ORDER: Record<string, string[]> = {
     "JavaScript Fundamentals", "Syntax", "Variables & Output", "Data Types",
     "Operators", "Conditions", "Loops", "Functions", "Arrays", "Objects",
     "Destructuring", "Spread and Rest", "DOM", "Events", "Forms",
-    "Fetch and JSON", "JSON", "Promises", "Async and Await", "Modules",
+    "REST & HTTP Fundamentals", "Fetch and JSON", "JSON", "Promises", "Async and Await", "Modules",
     "Error Handling", "Advanced JS",
   ],
   typescript: [
@@ -2910,7 +3031,7 @@ const LESSON_ORDER: Record<string, string[]> = {
   react: [
     "JSX", "Components", "Props", "State with useState", "Events",
     "Conditional Rendering", "Lists and Keys", "Forms", "useEffect", "useRef",
-    "Context", "Custom Hooks", "Component Patterns",
+    "Context", "Custom Hooks", "Data Fetching", "Component Patterns",
   ],
   nextjs: [
     "App Router Basics", "Project Structure", "Pages", "Layouts",
