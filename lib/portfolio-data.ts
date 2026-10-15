@@ -97,20 +97,26 @@ export const PROFILE_IMAGE = "/api/image/darylphoto.png"
 export const QUOTES: string[] = [
   "A degree may mark the end of a chapter, but continuous learning writes the rest of the story.",
   "Every bug is not a failure; it's a lesson waiting to be understood.",
-  "Technology keeps evolving, and so should we. Stay curious, keep learning, keep building.",
+  "The art of turning 'Madali lang 'yan sa app!' into 2,000 lines of functional logic.",
   "Behind every working system is a process of learning, testing, failing, and improving.",
   "Good technology solves problems; good technologists understand the problems first.",
+  "Non-tech people think making an app takes two hours because they watched a 30-second tutorial on TikTok and Youtube.",
   "Learning to code is not just learning a language—it's learning how to think differently.",
-  "In technology, progress starts with a simple question: 'How can I make this better?'",
   "Build something. Break something. Fix it. Learn from it. Repeat.",
+  "Code is like magic, except the spells are written in JavaScript and the magic trick actually works.",
   "The future belongs to those who are willing to keep learning.",
   "The best skill in technology is not knowing everything, but being willing to learn anything.",
+  "Building a web app isn't just clicking a few buttons—it’s negotiating with servers, fighting CSS layouts, and convincing the database to behave.",
+  "Making a web app look easy to use is the hardest part of building it.",
+  "Where creative imagination meets strict logical execution.",
+  "Making tech work so gracefully that people think it’s simple, sana parehas tayo ng nararamdaman diba.",
+  "Making tech work so gracefully that people think it’s simple—behind every 'easy' feature is our sweat, logic, and endless caffeine.",
 ]
 
 export const ABOUT_PARAGRAPHS = [
-  "I'm a passionate technologist who wears many hats in the digital world. From crafting elegant web applications to managing complex cloud infrastructure, I bring creativity and technical expertise to every project.",
-  "My journey spans across full-stack development, system administration, cloud engineering, and creative design. This diverse skillset allows me to approach problems from multiple angles and deliver comprehensive solutions.",
-  "When I'm not coding or managing servers, you'll find me creating digital art, editing multimedia content, or exploring new technologies.",
+  "I'm a technology enthusiast passionate about building digital solutions that combine technical excellence with creative thinking. I enjoy exploring different areas of technology, developing applications, and finding effective ways to solve real-world problems.",
+  "My experience spans software development, system administration, cloud technologies, and digital design. This diverse skill set allows me to approach challenges from different perspectives and build solutions that are functional, reliable, and thoughtfully designed.",
+  "Beyond development, I enjoy exploring new technologies, creating digital art, and working with multimedia. I'm always eager to learn, experiment, and discover new possibilities through technology.",
 ]
 
 export const ABOUT_QUOTE =

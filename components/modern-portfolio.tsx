@@ -324,8 +324,7 @@ export function ModernPortfolio() {
               className="mt-6 max-w-md leading-relaxed md:max-w-xl 2xl:max-w-2xl"
               style={{ color: "var(--muted)", fontSize: "clamp(0.875rem, 1.3vw, 1.125rem)" }}
             >
-              Full Stack Developer, DevOps Engineer, Cloud Engineer, and Graphic Designer — I blend engineering
-              with creativity to build elegant, reliable, and beautiful digital experiences.
+              I blend engineering with creativity to build innovative, high-performing, and impactful digital experiences. Turning ideas into practical solutions through modern technology, thoughtful design, and a passion for innovation.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
