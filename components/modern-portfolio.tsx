@@ -234,6 +234,7 @@ const navLinks = [
   { label: "Certificates", href: "#certificates" },
   { label: "About", href: "#about" },
   { label: "Contact", href: "#contact" },
+  { label: "Playground", href: "/playground" },
 ]
 
 export function ModernPortfolio() {
