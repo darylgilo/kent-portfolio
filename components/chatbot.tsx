@@ -1,7 +1,34 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { FaRobot, FaTimes, FaPaperPlane, FaCommentDots } from "react-icons/fa"
+import { Lottie } from "lottie-react"
+import { FaRobot, FaPaperPlane } from "react-icons/fa"
+
+function LottiePlayer({
+  animationData,
+  className,
+}: {
+  animationData: object
+  className?: string
+}) {
+  return <Lottie src={animationData} loop={true} autoplay={true} className={className} />
+}
+
+function ChatBotIcon() {
+  const [animationData, setAnimationData] = useState<object | null>(null)
+  useEffect(() => {
+    fetch("/lottie/robot.json")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setAnimationData(data))
+      .catch(() => {})
+  }, [])
+  if (!animationData) {
+    return <span className="text-xl text-white"><FaRobot /></span>
+  }
+  return (
+    <LottiePlayer animationData={animationData} className="h-24 w-24" />
+  )
+}
 
 type Message = {
   from: "user" | "bot"
@@ -186,32 +213,54 @@ export function ChatBot() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, typing, open])
 
-  function handleSend(text: string) {
+  async function handleSend(text: string) {
     const trimmed = text.trim()
     if (!trimmed || typing) return
-    setMessages((prev) => [...prev, { from: "user", text: trimmed }])
+    const newMessages: Message[] = [...messages, { from: "user", text: trimmed }]
+    setMessages(newMessages)
     setInput("")
     setTyping(true)
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages.map((m) => ({
+            role: m.from === "user" ? "user" : "assistant",
+            content: m.text,
+          })),
+        }),
+      })
+      const data = await res.json()
+      const replyText =
+        data?.reply && typeof data.reply === "string"
+          ? data.reply
+          : findAnswer(trimmed)
+      setMessages((prev) => [...prev, { from: "bot", text: replyText }])
+    } catch {
       setMessages((prev) => [...prev, { from: "bot", text: findAnswer(trimmed) }])
+    } finally {
       setTyping(false)
-    }, 600)
+    }
   }
 
   return (
       <>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex h-14 w-14 items-center justify-center rounded-full text-xl text-white shadow-2xl transition-transform hover:scale-110"
+          className="flex h-24 w-24 items-center justify-center transition-transform hover:scale-110"
           style={{
             position: "fixed",
             bottom: "1.5rem",
             right: "1.5rem",
-            background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+            background: "transparent",
+            border: "none",
+            boxShadow: "none",
+            zIndex: 60,
           }}
           aria-label={open ? "Close chatbot" : "Open chatbot"}
         >
-          {open ? <FaTimes /> : <FaCommentDots />}
+          <ChatBotIcon />
         </button>
 
         {open && (
@@ -223,7 +272,7 @@ export function ChatBot() {
               height: "60vh",
               maxHeight: "480px",
               position: "fixed",
-              bottom: "6rem",
+              bottom: "8.5rem",
               right: "1.5rem",
               zIndex: 50,
             }}
