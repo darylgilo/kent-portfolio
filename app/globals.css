@@ -95,6 +95,70 @@ html {
   animation: type-bar 0.9s step-end infinite;
 }
 
+/* Voice input wave: each bar scales vertically on its own phase/duration. */
+@keyframes voice-wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+.voice-wave-bar {
+  transform-origin: center;
+  animation: voice-wave 1s ease-in-out infinite;
+}
+
+/* SCORPI orb: slow calm breathing hover while the AI talks. */
+@keyframes scorpi-orb-talk {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-5px) scale(1.02); }
+}
+
+.scorpi-orb-talking {
+  animation: scorpi-orb-talk 2.8s ease-in-out infinite;
+}
+
+/* SCORPI outline rings: rotate while listening. */
+@keyframes scorpi-ring-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scorpi-ring-spin-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.scorpi-ring-spin {
+  animation: scorpi-ring-spin 28s linear infinite;
+}
+
+.scorpi-ring-spin-reverse {
+  animation: scorpi-ring-spin-reverse 20s linear infinite;
+}
+
+.scorpi-ring-spin-slow {
+  animation: scorpi-ring-spin 44s linear infinite;
+}
+
+/* SCORPI dialogue: the You/Scorpi lines swap places (seesaw) while the next
+   round is transcribed — a soft slide in the direction of the new order. */
+@keyframes scorpi-lines-swap-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scorpi-lines-swap-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scorpi-lines-swap-up {
+  animation: scorpi-lines-swap-up 340ms ease-out;
+}
+
+.scorpi-lines-swap-down {
+  animation: scorpi-lines-swap-down 340ms ease-out;
+}
+
 .cert-carousel {
   overflow: hidden;
   touch-action: pan-y;
