@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import type { CSSProperties, ReactElement } from "react"
 import dynamic from "next/dynamic"
 import "./CrystalizedBall.css"
+import ScorpioBackground from "./ScorpioBackground"
 import { Lottie } from "lottie-react"
 import { FaRobot, FaPaperPlane, FaTimes, FaSmile, FaVolumeUp, FaVolumeOff, FaMicrophone } from "react-icons/fa"
 
@@ -808,10 +809,16 @@ export function ChatBot() {
   }, [open])
 
   // Lock page scroll while the SCORPI overlay is open; Esc closes it.
+  // Lock BOTH html and body: globals.css sets `overflow-x: hidden` on html,
+  // so per overflow-propagation rules the body's overflow never reaches the
+  // viewport — locking only body left the page scrollbar visible/scrollable
+  // behind the overlay.
   useEffect(() => {
     if (!scorpiOpen) return
-    const prev = document.body.style.overflow
+    const prevBody = document.body.style.overflow
+    const prevHtml = document.documentElement.style.overflow
     document.body.style.overflow = "hidden"
+    document.documentElement.style.overflow = "hidden"
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         discardTranscriptRef.current = true
@@ -826,7 +833,8 @@ export function ChatBot() {
     }
     window.addEventListener("keydown", onKey)
     return () => {
-      document.body.style.overflow = prev
+      document.body.style.overflow = prevBody
+      document.documentElement.style.overflow = prevHtml
       window.removeEventListener("keydown", onKey)
     }
   }, [scorpiOpen])
@@ -1306,6 +1314,16 @@ export function ChatBot() {
               background: "radial-gradient(ellipse at center, #0a1628 0%, #04070f 70%)",
             }}
           >
+            {/* Scorpio constellation + starfield — the overlay's backdrop.
+                Absolutely positioned so it never joins the flex layout,
+                and pointer-free so clicks pass straight through. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none"
+              style={{ position: "absolute", inset: 0, zIndex: 0 }}
+            >
+              <ScorpioBackground animated scale={1.75} />
+            </div>
             <button
               type="button"
               onClick={handleScorpiClose}
@@ -1317,12 +1335,13 @@ export function ChatBot() {
                 right: "1.25rem",
                 background: "rgba(255,255,255,0.08)",
                 border: "1px solid rgba(255,255,255,0.25)",
+                zIndex: 2,
               }}
             >
               <FaTimes />
             </button>
 
-            <div className="flex w-full max-w-md flex-col items-center text-center">
+            <div className="relative z-[1] flex w-full max-w-md flex-col items-center text-center">
               <div
                 className="text-xs font-semibold uppercase"
                 style={{ color: "#7dd3fc", letterSpacing: "0.45em", textIndent: "0.45em" }}
