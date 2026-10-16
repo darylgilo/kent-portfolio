@@ -411,13 +411,13 @@ const INTENTS: Intent[] = [
   {
     keywords: ["your name", "who are you", "are you", "what is your name", "scorpi"],
     priority: 5,
-    answer: "I AM SCORPI PERSONAL AI ASSISTANT of MASTER DARYL GILO.",
+    answer: "I AM SCORPI, THE PERSONAL AI ASSISTANT OF MY MASTER, KENT DARYL GILO.",
   },
   {
     keywords: ["who made", "who created", "who built", "who developed", "creator", "maker", "made you", "created you", "built you", "sino gumawa", "gumawa sayo", "gumawa sa", "lumikha", "nag gawa", "nag-gawa", "gumawa"],
     priority: 5,
     answer:
-      "MY CREATOR IS MASTER DARYL GILO CREATED ME FOR HIS PERSONAL ASSISTANCE FOR HIS PORTFOLIO.",
+      "MY MASTER IS KENT DARYL GILO. HE CREATED ME AS HIS PERSONAL AI ASSISTANT FOR HIS PORTFOLIO.",
   },
   {
     keywords: ["where", "from", "live", "lives", "location", "address", "taga saan", "taga-saan", "taga", "saan", "lugar", "capul", "samar"],
@@ -433,7 +433,7 @@ const INTENTS: Intent[] = [
     keywords: ["name", "who", "kent", "daryl", "gilo", "about", "you"],
     priority: 1,
     answer:
-      "THIS PORTFOLIO BELONGS TO MY CREATOR, MY BOSS, KENT DARYL M. GILO — A FULL STACK DEVELOPER. HE'S A TECHNOLOGIST WEARING MANY HATS AS A DEVOPS, CLOUD ENGINEER, AND MOBILE DEVELOPER.",
+      "THIS PORTFOLIO BELONGS TO MY MASTER, KENT DARYL M. GILO — A FULL STACK DEVELOPER. HE'S A TECHNOLOGIST WEARING MANY HATS AS A DEVOPS, CLOUD ENGINEER, AND MOBILE DEVELOPER.",
   },
   {
     keywords: ["skill", "expertise", "expert", "stack", "what can"],
@@ -565,7 +565,7 @@ export function ChatBot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       from: "bot",
-      text: "HELLO,! I AM SCORPI. ASK ME ANYTHING ABOUT BOSS KENT!",
+      text: "HELLO! I AM SCORPI. ASK ME ANYTHING ABOUT MY MASTER KENT!",
     },
   ])
   const [input, setInput] = useState("")
