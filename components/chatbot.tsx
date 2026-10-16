@@ -63,49 +63,21 @@ type Message = {
 }
 
 // ---------------------------------------------------------------------------
-// Free voice features powered by the browser's built-in Web Speech API.
-// No API keys, no paid services, no extra dependencies.
+// Voice input: record the mic with MediaRecorder, then transcribe server-side
+// with Groq Whisper (see /api/transcribe). The Web Speech API's tiny server
+// models mangled Filipino/Taglish speech — Whisper handles both natively.
 // ---------------------------------------------------------------------------
 
-type SpeechRecognitionAlternativeLike = { transcript: string; confidence?: number }
-type SpeechRecognitionResultLike = {
-  0: SpeechRecognitionAlternativeLike
-  isFinal: boolean
-  length: number
-  [index: number]: SpeechRecognitionAlternativeLike | boolean
-}
-type SpeechRecognitionResultListLike = {
-  length: number
-  [index: number]: SpeechRecognitionResultLike
-}
-type SpeechRecognitionErrorLike = { error?: string }
-type SpeechRecognitionEventLike = { results: SpeechRecognitionResultListLike }
+/** Recorder MIME types, best first — MediaRecorder picks the first supported. */
+const RECORDER_MIME_TYPES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
 
-interface SpeechRecognitionLike {
-  lang: string
-  interimResults: boolean
-  continuous: boolean
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null
-  onend: (() => void) | null
-  onerror: ((event: SpeechRecognitionErrorLike) => void) | null
-  start: () => void
-  stop: () => void
-  abort: () => void
+function pickRecorderMime(): string | undefined {
+  if (typeof window === "undefined" || !("MediaRecorder" in window)) return undefined
+  return RECORDER_MIME_TYPES.find((t) => MediaRecorder.isTypeSupported(t))
 }
 
-type SpeechRecognitionCtorLike = new () => SpeechRecognitionLike
-
-/** Speech-recognition language: English (Philippines) or Filipino/Tagalog. */
+/** Transcription language: English (Philippines) or Filipino/Tagalog. */
 type SttLang = "en-PH" | "fil-PH"
-
-function getSpeechRecognition(): SpeechRecognitionCtorLike | undefined {
-  if (typeof window === "undefined") return undefined
-  const w = window as unknown as {
-    SpeechRecognition?: SpeechRecognitionCtorLike
-    webkitSpeechRecognition?: SpeechRecognitionCtorLike
-  }
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition
-}
 
 /** Turn chat text ("> " bullets, ALL CAPS, newlines) into speakable sentences. */
 function stripForSpeech(text: string): string {
@@ -117,6 +89,11 @@ function stripForSpeech(text: string): string {
 
 let premiumAudio: HTMLAudioElement | null = null
 let activeUtterance: SpeechSynthesisUtterance | null = null
+// Monotonic token for "who may currently make sound". Every new reply (or
+// explicit stop) bumps it; async TTS steps compare their captured value
+// and bail when superseded — two voices can never overlap or follow each
+// other from stale requests.
+let ttsGeneration = 0
 
 /** Subscribers notified when free (browser) TTS starts/stops. Used for SCORPI visuals. */
 const ttsBoundaryListeners = new Set<() => void>()
@@ -252,7 +229,7 @@ function pickVoice(preferredPrefix = "en"): SpeechSynthesisVoice | null {
   )
 }
 
-function speak(text: string, lang: SttLang = "en-PH") {
+function speak(text: string, lang: SttLang, gen: number) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     signalReplyStarted()
     return
@@ -271,6 +248,11 @@ function speak(text: string, lang: SttLang = "en-PH") {
   utterance.lang = voice?.lang ?? lang
   activeUtterance = utterance
   utterance.onstart = () => {
+    // A newer reply superseded this one — never let two voices overlap.
+    if (gen !== ttsGeneration) {
+      window.speechSynthesis.cancel()
+      return
+    }
     notifyTtsStart()
     signalReplyStarted()
   }
@@ -296,6 +278,7 @@ function stopPremiumAudio() {
 }
 
 function stopSpeaking() {
+  ttsGeneration++
   activeUtterance = null
   stopPremiumAudio()
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -310,20 +293,23 @@ function stopSpeaking() {
  * caller should fall back to the free browser voice (no key, quota
  * used up, network issue, or autoplay blocked).
  */
-async function speakPremium(text: string): Promise<boolean> {
+async function speakPremium(text: string, gen: number): Promise<boolean> {
   if (typeof window === "undefined") return false
   const clean = stripForSpeech(text).slice(0, 600)
   if (!clean) return false
   let audio: HTMLAudioElement | null = null
   try {
-    stopSpeaking()
     const res = await fetch("/api/voice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: clean }),
     })
+    // Superseded while the clip was generating — a newer reply owns the
+    // speakers now; bail before this stale voice can join in.
+    if (gen !== ttsGeneration) return false
     if (!res.ok) return false
     const blob = await res.blob()
+    if (gen !== ttsGeneration) return false
     const url = URL.createObjectURL(blob)
     audio = new Audio(url)
     premiumAudio = audio
@@ -338,6 +324,17 @@ async function speakPremium(text: string): Promise<boolean> {
     audio.onended = release
     audio.onerror = release
     await audio.play()
+    if (gen !== ttsGeneration) {
+      // Superseded as playback was starting — cut this voice off so only
+      // the newest reply is ever heard.
+      try {
+        audio.pause()
+      } catch {
+        // ignore
+      }
+      release()
+      return false
+    }
     signalReplyStarted()
     return true
   } catch {
@@ -361,12 +358,19 @@ async function speakPremium(text: string): Promise<boolean> {
 }
 
 async function speakReply(text: string, lang: SttLang = "en-PH") {
-  // Always prefer the ElevenLabs AI voice when it's configured;
-  // otherwise fall back to the free built-in browser voice.
-  // The ElevenLabs flash model is multilingual, so it reads Tagalog too.
-  const played = await speakPremium(text)
+  // Exactly ONE voice may ever be audible: stop whatever is playing, claim
+  // the latest-generation token, and let every async step check it. This
+  // kills the double-voice race where a stale ElevenLabs clip and the
+  // browser fallback (or two clips) played over each other.
+  stopSpeaking()
+  const gen = ++ttsGeneration
+  // Prefer the ElevenLabs AI voice when it's configured; fall back to the
+  // free built-in browser voice only on genuine failure — never when this
+  // reply was simply superseded by a newer one.
+  const played = await speakPremium(text, gen)
   if (played) return
-  speak(text, lang)
+  if (gen !== ttsGeneration) return
+  speak(text, lang, gen)
 }
 
 const PROJECTS = [
@@ -611,10 +615,20 @@ export function ChatBot() {
   // Synthetic "talking" level 0..1 driving the orb core while the AI
   // speaks — layered syllable-rate sines so the particles "talk".
   const [talkLevel, setTalkLevel] = useState(0)
-  // SpeechRecognition only exists in some browsers (Chrome/Edge/Safari).
-  const [micSupported] = useState(() => getSpeechRecognition() !== undefined)
+  // Voice capture needs mic access + MediaRecorder (all modern browsers).
+  const [micSupported] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      !!navigator.mediaDevices?.getUserMedia &&
+      "MediaRecorder" in window
+  )
+  /** True while Whisper is processing the recorded clip (mic is closed). */
+  const [transcribing, setTranscribing] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  // Guards the async getUserMedia gap so two rapid restarts can't double-start.
+  const startingRef = useRef(false)
+  const vadRafRef = useRef<number | null>(null)
   const discardTranscriptRef = useRef(false)
   // Mirrors scorpiOpen for use inside recognition timeouts/callbacks.
   const scorpiOpenRef = useRef(false)
@@ -824,6 +838,17 @@ export function ChatBot() {
     }
   }
 
+  /** Stop any live recorder session without sending its clip. */
+  function abortVoiceSession() {
+    if (!mediaRecorderRef.current) return
+    try {
+      mediaRecorderRef.current.stop()
+    } catch {
+      // already stopped
+    }
+    mediaRecorderRef.current = null
+  }
+
   // Warm up the TTS voice list (Chrome loads voices asynchronously)
   // and release speech resources on unmount.
   useEffect(() => {
@@ -834,7 +859,7 @@ export function ChatBot() {
     return () => {
       window.speechSynthesis.removeEventListener("voiceschanged", onLoad)
       discardTranscriptRef.current = true
-      recognitionRef.current?.abort()
+      abortVoiceSession()
       window.speechSynthesis.cancel()
       teardownMeter()
     }
@@ -846,7 +871,7 @@ export function ChatBot() {
   useEffect(() => {
     if (open) return
     discardTranscriptRef.current = true
-    recognitionRef.current?.abort()
+    abortVoiceSession()
     teardownMeter()
     stopSpeaking()
   }, [open])
@@ -865,7 +890,7 @@ export function ChatBot() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         discardTranscriptRef.current = true
-        recognitionRef.current?.abort()
+        abortVoiceSession()
         teardownMeter()
         setListening(false)
         stopSpeaking()
@@ -910,23 +935,63 @@ export function ChatBot() {
     }
     // Abort the current session (the discard flag blocks its partial
     // transcript from being sent), then listen again in the new language.
-    if (scorpiOpenRef.current && recognitionRef.current) {
+    if (scorpiOpenRef.current && mediaRecorderRef.current) {
       discardTranscriptRef.current = true
-      recognitionRef.current.abort()
+      abortVoiceSession()
       window.setTimeout(() => {
         discardTranscriptRef.current = false
         startListening()
-      }, 200)
+      }, 300)
     }
   }
 
-  /** Start a voice session; auto-restarts so SCORPI keeps listening. */
+  /** Upload the recorded clip to our Groq Whisper proxy, then send it. */
+  async function transcribeAndSend(blob: Blob, isMp4: boolean) {
+    setTranscribing(true)
+    // "…" shows in the You line while Whisper thinks — there are no live
+    // words anymore now that transcription happens after the clip ends.
+    setJarvisText("…")
+    setLiveTranscribing(true)
+    try {
+      const fd = new FormData()
+      fd.append("audio", blob, isMp4 ? "speech.mp4" : "speech.webm")
+      // Whisper understands Tagalog ("tl") and English natively — the same
+      // EN/FIL toggle that used to pick the recognizer language now picks
+      // the transcription language.
+      fd.append("language", sttLangRef.current.startsWith("fil") ? "tl" : "en")
+      const res = await fetch("/api/transcribe", { method: "POST", body: fd })
+      const data = (await res.json()) as { text?: string }
+      const text = (data.text ?? "").trim()
+      if (!scorpiOpenRef.current) return
+      if (!text) {
+        // Nothing intelligible in the clip — keep listening.
+        setJarvisText("")
+        setLiveTranscribing(false)
+        window.setTimeout(() => startListening(), 250)
+        return
+      }
+      setInput(text)
+      setJarvisText(text)
+      handleSend(text)
+      // Mute while the reply plays — the resume poll unmutes after talking.
+      discardTranscriptRef.current = true
+    } catch {
+      if (scorpiOpenRef.current) window.setTimeout(() => startListening(), 400)
+    } finally {
+      setTranscribing(false)
+    }
+  }
+
+  /**
+   * Start a voice session: record the mic, auto-stop after a real pause
+   * (voice-activity detection), then transcribe via Groq Whisper.
+   * Auto-restarts so SCORPI keeps listening.
+   */
   function startListening() {
-    const SpeechRecognition = getSpeechRecognition()
-    if (!SpeechRecognition || recognitionRef.current || !scorpiOpenRef.current) return
-    // Never open the mic while the AI is still talking — its own voice
-    // would echo back into recognition and cause an answer loop.
-    // Retry shortly instead so listening resumes right after talking ends.
+    if (startingRef.current || mediaRecorderRef.current || !scorpiOpenRef.current) return
+    // Never open the mic while the AI is still talking — its own voice would
+    // be recorded into the clip and echo back as an answer loop. Retry
+    // shortly so listening resumes right after talking ends.
     if (
       (typeof window !== "undefined" &&
         "speechSynthesis" in window &&
@@ -939,131 +1004,140 @@ export function ChatBot() {
     // Silence the bot so the microphone can hear the user.
     stopSpeaking()
     discardTranscriptRef.current = false
+    startingRef.current = true
 
-    const recognition = new SpeechRecognition()
-    let finalTranscript = ""
-    // The recognizer only understands the language it was told to expect:
-    // "en-PH" for (Filipino-accented) English, "fil-PH" for Tagalog.
-    // The toggle in the SCORPI overlay flips this; the ref keeps the
-    // always-listening auto-restarts in sync.
-    recognition.lang = sttLangRef.current
-    recognition.interimResults = true
-    // Non-continuous so the browser finalizes fast after the user pauses;
-    // we restart ourselves for the always-listening feel.
-    recognition.continuous = false
-    // Instant submit: once the user stops talking for ~1.2s after real
-    // speech arrived, stop now instead of waiting for the browser's own
-    // (often 5s+) end-of-speech timeout.
-    let submitted = false
-    let silenceTimer: number | null = null
-    const clearSilenceTimer = () => {
-      if (silenceTimer !== null) {
-        window.clearTimeout(silenceTimer)
-        silenceTimer = null
-      }
-    }
-    const submitNow = () => {
-      if (submitted) return
-      submitted = true
-      clearSilenceTimer()
-      try {
-        recognition.stop()
-      } catch {
-        // already stopped — onend will handle the submit path
-      }
-    }
-
-    recognition.onresult = (event) => {
-      let interim = ""
-      for (let i = 0; i < event.results.length; i++) {
-        const raw = event.results[i] as unknown as {
-          isFinal: boolean
-          length: number
-          [index: number]: { transcript: string; confidence?: number }
+    const mime = pickRecorderMime()
+    const isMp4 = (mime ?? "").includes("mp4")
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
+      .then((stream) => {
+        // Overlay closed (or a newer session started) while the permission
+        // prompt was open — release the stream and bail.
+        if (!scorpiOpenRef.current || mediaRecorderRef.current) {
+          startingRef.current = false
+          stream.getTracks().forEach((t) => t.stop())
+          return
         }
-        // Take the highest-confidence alternative for final results.
-        let best = raw[0]?.transcript ?? ""
-        let bestConf =
-          typeof raw[0]?.confidence === "number" ? (raw[0].confidence as number) : -1
-        for (let a = 1; a < raw.length; a++) {
-          const alt = raw[a]
-          if (!alt) continue
-          const altConf = typeof alt.confidence === "number" ? alt.confidence : -1
-          if (altConf > bestConf) {
-            bestConf = altConf
-            best = alt.transcript
+
+        const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+        const chunks: BlobPart[] = []
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data)
+        }
+        recorder.onstop = () => {
+          if (vadRafRef.current !== null) {
+            cancelAnimationFrame(vadRafRef.current)
+            vadRafRef.current = null
+          }
+          stream.getTracks().forEach((t) => t.stop())
+          void audioCtx.close().catch(() => {})
+          startingRef.current = false
+          if (mediaRecorderRef.current === recorder) mediaRecorderRef.current = null
+          setListening(false)
+
+          if (discardTranscriptRef.current || !scorpiOpenRef.current) {
+            stopMeter()
+            return
+          }
+          const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" })
+          if (blob.size < 4000) {
+            // ~empty clip (a cough or a tap) — nothing worth transcribing.
+            stopMeter()
+            setJarvisText("")
+            setLiveTranscribing(false)
+            window.setTimeout(() => startListening(), 250)
+            return
+          }
+          // Keep the meter + levels alive while Whisper runs and the bot
+          // answers — the rings used to snap off in this gap.
+          void transcribeAndSend(blob, isMp4)
+        }
+
+        mediaRecorderRef.current = recorder
+        setListening(true)
+        startMeter()
+        recorder.start()
+
+        // --- Voice-activity detection on the same mic stream --------------
+        // Recording starts immediately, but the clip only "counts" once the
+        // level rises above the threshold; a 1.8s silence after real speech
+        // stops the recorder (matching the old endpointing feel).
+        const audioCtx = new AudioContext()
+        const source = audioCtx.createMediaStreamSource(stream)
+        const analyser = audioCtx.createAnalyser()
+        analyser.fftSize = 512
+        source.connect(analyser)
+        const buf = new Float32Array(analyser.fftSize)
+        const LEVEL_THRESHOLD = 0.035
+        const SILENCE_MS = 1800
+        const MAX_RECORD_MS = 30_000
+        // Onset gate: sound must stay above the threshold CONTINUOUSLY for
+        // ONSET_MS before the clip counts as speech — rejects echo tails,
+        // coughs, and keyboard blips that a bare RMS check would trigger.
+        const ONSET_MS = 300
+        let speechStarted = false
+        let speechStartedAt = 0
+        let lastLoudAt = 0
+        let loudSince = 0
+        const finish = () => {
+          if (vadRafRef.current !== null) {
+            cancelAnimationFrame(vadRafRef.current)
+            vadRafRef.current = null
+          }
+          if (recorder.state !== "inactive") {
+            try {
+              recorder.stop()
+            } catch {
+              // already stopped — onstop handles the rest
+            }
           }
         }
-        if (raw.isFinal) finalTranscript += best + " "
-        else interim += raw[0]?.transcript ?? ""
-      }
-      const text = (finalTranscript + interim).trim()
-      setInput(text)
-      setJarvisText(text)
-      // New round's live line — flips the seesaw (previous answer rides on
-      // top) as soon as real words arrive. Empty interim events never flip.
-      if (text) setLiveTranscribing(true)
-      // Instant endpointing: the user paused ~1s after real speech —
-      // stop now instead of waiting for the browser's own (often 5s+)
-      // end-of-speech timeout. Each new result re-arms the timer.
-      clearSilenceTimer()
-      if (text) {
-        silenceTimer = window.setTimeout(submitNow, 1100)
-      }
-    }
-    recognition.onend = () => {
-      clearSilenceTimer()
-      setListening(false)
-      recognitionRef.current = null
-      const spoken = finalTranscript.trim()
-      if (discardTranscriptRef.current || !scorpiOpenRef.current) {
+        const tick = () => {
+          vadRafRef.current = requestAnimationFrame(tick)
+          analyser.getFloatTimeDomainData(buf)
+          let sum = 0
+          for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i]
+          const rms = Math.sqrt(sum / buf.length)
+          const now = performance.now()
+          if (speechStarted && now - speechStartedAt > MAX_RECORD_MS) {
+            finish()
+            return
+          }
+          if (rms > LEVEL_THRESHOLD) {
+            if (!speechStarted) {
+              if (loudSince === 0) loudSince = now
+              if (now - loudSince < ONSET_MS) return
+              speechStarted = true
+              speechStartedAt = now
+              // Flip the seesaw to the "You" line while the clip records.
+              setJarvisText("…")
+              setLiveTranscribing(true)
+            }
+            lastLoudAt = now
+          } else {
+            loudSince = 0
+            if (speechStarted && now - lastLoudAt > SILENCE_MS) {
+              finish()
+              return
+            }
+          }
+        }
+        tick()
+      })
+      .catch(() => {
+        // Mic permission denied or no device — cool down, then retry so a
+        // later grant (or device plug-in) recovers without a reload.
+        startingRef.current = false
+        setListening(false)
         stopMeter()
-        return
-      }
-      if (spoken) {
-        // Keep the meter + levels alive while the bot answers — this is the
-        // 400ms-ish silent gap where the rings used to snap off. The meter
-        // loop keeps feeding frames until listening resumes.
-        // Mute the mic while the reply plays (discard flag): the session
-        // already ended here, so the bot's own voice can't echo back in.
-        handleSend(spoken)
-        discardTranscriptRef.current = true
-      } else {
-        stopMeter()
-        // No speech captured (timeout/silence) — keep listening.
-        window.setTimeout(() => startListening(), 300)
-      }
-    }
-    recognition.onerror = (event) => {
-      setListening(false)
-      recognitionRef.current = null
-      if (discardTranscriptRef.current || !scorpiOpenRef.current) {
-        stopMeter()
-        return
-      }
-      // "aborted" comes from our own mute-abort while the AI talks —
-      // never restart the mic from here, the resume poll owns that.
-      if (event.error === "aborted") {
-        stopMeter()
-        return
-      }
-      stopMeter()
-      // The bot's own voice echoing into the mic causes capture flaps —
-      // brief cooldown so we don't hot-loop. Other transient errors retry fast.
-      const cooldown = event.error === "not-allowed" || event.error === "audio-capture" ? 1200 : 500
-      window.setTimeout(() => startListening(), cooldown)
-    }
-
-    recognitionRef.current = recognition
-    setListening(true)
-    startMeter()
-    try {
-      recognition.start()
-    } catch {
-      recognitionRef.current = null
-      setListening(false)
-      stopMeter()
-    }
+        if (scorpiOpenRef.current) window.setTimeout(() => startListening(), 1200)
+      })
   }
 
   /** Mic button: hide robot + chatbox, open the SCORPI overlay. */
@@ -1085,7 +1159,9 @@ export function ChatBot() {
     scorpiOpenRef.current = false
     // Unblock any pending waitForReplyStart() so handleSend can finish.
     signalReplyStarted()
-    recognitionRef.current?.abort()
+    // Stop the recorder (if any); its onstop sees the discard flag and
+    // releases the mic stream without sending anything.
+    abortVoiceSession()
     teardownMeter()
     setMicLevel(0)
     setListening(false)
@@ -1097,9 +1173,9 @@ export function ChatBot() {
   }
 
   async function handleSend(text: string) {
-    // Voice transcripts from the SCORPI overlay arrive via recognitionRef;
-    // otherwise block double-submits while a reply is being generated.
-    if (!recognitionRef.current && typing) return
+    // Voice transcripts from the SCORPI overlay arrive via the recorder
+    // pipeline; otherwise block double-submits while a reply is generated.
+    if (!mediaRecorderRef.current && typing) return
     const trimmed = text.trim()
     if (!trimmed || typing) return
     const newMessages: Message[] = [...messages, { from: "user", text: trimmed }]
@@ -1148,9 +1224,12 @@ export function ChatBot() {
           resumed = true
           window.clearInterval(timer)
           window.clearTimeout(failsafe)
-          // Mic unmutes HERE — after talking fully ends.
+          // Mic unmutes HERE — after talking fully ends. The extra 900ms
+          // lets the reply's room echo die first; otherwise the VAD can
+          // catch the tail of the bot's own voice, transcribe it, and
+          // answer itself (the "double response" loop).
           discardTranscriptRef.current = false
-          startListening()
+          window.setTimeout(() => startListening(), 900)
         }
         const timer = window.setInterval(() => {
           // NOTE: do NOT bail on discardTranscriptRef here — it is
@@ -1450,7 +1529,15 @@ export function ChatBot() {
                 className="mt-2 text-2xl font-bold uppercase text-white"
                 style={{ letterSpacing: "0.12em" }}
               >
-                {speaking ? "Talking" : listening ? "Listening" : typing ? "Thinking" : "Ready"}
+                {speaking
+                  ? "Talking"
+                  : listening
+                    ? "Listening"
+                    : transcribing
+                      ? "Transcribing"
+                      : typing
+                        ? "Thinking"
+                        : "Ready"}
               </div>
 
               <div
