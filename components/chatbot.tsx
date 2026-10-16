@@ -95,6 +95,9 @@ interface SpeechRecognitionLike {
 
 type SpeechRecognitionCtorLike = new () => SpeechRecognitionLike
 
+/** Speech-recognition language: English (Philippines) or Filipino/Tagalog. */
+type SttLang = "en-PH" | "fil-PH"
+
 function getSpeechRecognition(): SpeechRecognitionCtorLike | undefined {
   if (typeof window === "undefined") return undefined
   const w = window as unknown as {
@@ -233,17 +236,23 @@ function useSpeaking(): boolean {
   return speaking
 }
 
-function pickVoice(): SpeechSynthesisVoice | null {
+function pickVoice(preferredPrefix = "en"): SpeechSynthesisVoice | null {
   const voices = window.speechSynthesis.getVoices()
   if (voices.length === 0) return null
+  // Prefer a local voice for the requested language ("fil" for Filipino),
+  // then any voice for it, then fall back to English.
   return (
+    voices.find(
+      (v) => v.lang.toLowerCase().startsWith(preferredPrefix) && v.localService
+    ) ??
+    voices.find((v) => v.lang.toLowerCase().startsWith(preferredPrefix)) ??
     voices.find((v) => v.lang.toLowerCase().startsWith("en") && v.localService) ??
     voices.find((v) => v.lang.toLowerCase().startsWith("en")) ??
     null
   )
 }
 
-function speak(text: string) {
+function speak(text: string, lang: SttLang = "en-PH") {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     signalReplyStarted()
     return
@@ -255,9 +264,11 @@ function speak(text: string) {
   }
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(clean)
-  const voice = pickVoice()
+  // Match the reply voice to the mic language — a Filipino voice reads
+  // Tagalog text far better than an English one (and vice versa).
+  const voice = pickVoice(lang.startsWith("fil") ? "fil" : "en")
   if (voice) utterance.voice = voice
-  utterance.lang = voice?.lang ?? "en-US"
+  utterance.lang = voice?.lang ?? lang
   activeUtterance = utterance
   utterance.onstart = () => {
     notifyTtsStart()
@@ -349,12 +360,13 @@ async function speakPremium(text: string): Promise<boolean> {
   }
 }
 
-async function speakReply(text: string) {
+async function speakReply(text: string, lang: SttLang = "en-PH") {
   // Always prefer the ElevenLabs AI voice when it's configured;
   // otherwise fall back to the free built-in browser voice.
+  // The ElevenLabs flash model is multilingual, so it reads Tagalog too.
   const played = await speakPremium(text)
   if (played) return
-  speak(text)
+  speak(text, lang)
 }
 
 const PROJECTS = [
@@ -399,23 +411,23 @@ const INTENTS: Intent[] = [
   {
     keywords: ["your name", "who are you", "are you", "what is your name", "scorpi"],
     priority: 5,
-    answer: "I AM SCORPI.",
+    answer: "I AM SCORPI PERSONAL AI ASSISTANT of MASTER DARYL GILO.",
   },
   {
     keywords: ["who made", "who created", "who built", "who developed", "creator", "maker", "made you", "created you", "built you", "sino gumawa", "gumawa sayo", "gumawa sa", "lumikha", "nag gawa", "nag-gawa", "gumawa"],
     priority: 5,
     answer:
-      "MY CREATOR IS BOSS KENT DARYL GILO CREATED ME FOR HIS PERSONAL ASSISTANCE FOR HIS PORTFOLIO.",
+      "MY CREATOR IS MASTER DARYL GILO CREATED ME FOR HIS PERSONAL ASSISTANCE FOR HIS PORTFOLIO.",
   },
   {
     keywords: ["where", "from", "live", "lives", "location", "address", "taga saan", "taga-saan", "taga", "saan", "lugar", "capul", "samar"],
     priority: 4,
-    answer: "HE LIVES IN ISLAND OF CAPUL, NORTHERN SAMAR.",
+    answer: "HE LIVES IN ISLAND OF CAPUL, NORTHERN SAMAR PHILLIPINES.",
   },
   {
     keywords: ["hi", "hello", "hey", "kamusta", "kumusta"],
     answer:
-      "HELLO,! I AM SCORPI, BOSS KENT DARYL GILO'S PERSONAL AI ASSISTANT. ASK ME ABOUT HIS SKILLS, PROJECTS, TECHNOLOGIES, OR HOW TO CONTACT HIM. TYPE A QUESTION BELOW OR TAP A QUICK QUESTION.",
+      "HELLO,! I AM SCORPI, DARYL GILO'S PERSONAL AI ASSISTANT. ASK ME ABOUT HIS SKILLS, PROJECTS, TECHNOLOGIES, OR HOW TO CONTACT HIM.",
   },
   {
     keywords: ["name", "who", "kent", "daryl", "gilo", "about", "you"],
@@ -484,14 +496,25 @@ const INTENTS: Intent[] = [
     answer: "KENT'S FACEBOOK PROFILE IS AT https://facebook.com/darylgilo",
   },
   {
-    keywords: ["game", "snake", "play"],
-    answer:
-      "YES! THERE'S A SNAKE GAME IN THE CONTACT SECTION BELOW. SCROLL DOWN TO CONTACT AND USE THE ARROW KEYS OR WASD TO PLAY. HOW MANY POINTS CAN YOU SCORE?",
+    keywords: ["thank", "thanks", "salamat", "ty"],
+    answer: "YOU'RE WELCOME! MY MASTER APPRECIATES YOU VISITING. HAVE MORE QUESTIONS? JUST ASK.",
   },
   {
-    keywords: ["thank", "thanks", "salamat", "ty"],
-    answer: "YOU'RE WELCOME! KENT APPRECIATES YOU VISITING. HAVE MORE QUESTIONS? JUST ASK.",
+    keywords: ["bye", "goodbye", "see you later", "see you soon", "see you again"],
+    answer: "SEE YOU LATER! MY MASTER APPRECIATES YOUR VISIT. HAVE MORE QUESTIONS? JUST ASK.",
   },
+  {
+    keywords: ["help", "assist", "support", "guide", "how to", "troubleshoot"],
+    answer:
+      "I CAN HELP WITH QUESTIONS ABOUT KENT'S PORTFOLIO, SKILLS, PROJECTS, TECHNOLOGIES, AND CONTACT INFO. I CAN ALSO EXPLAIN TECH CONCEPTS OR GUIDE YOU ON WHAT TO LEARN. ASK ME ANYTHING!",
+  },
+  {
+    // "wake up" alone covers every variant via substring matching
+    // ("wake up", "wake up scorpi", "wake up!", ...). "hey scorpi" is
+    // separate because it doesn't contain "wake up".
+    keywords: ["wake up", "hey scorpi","hello scorpi", "hi scorpi", "scorpi wake up", "scorpi hello", "scorpi hi"],
+    answer: "HELLO! I AM AWAKE AND READY TO ASSIST YOU. ASK ME ANYTHING ABOUT MY MASTER PORTFOLIO OR ABOUT TECHNOLOGY.",
+  }
 ]
 
 const QUICK_QUESTIONS = [
@@ -514,7 +537,9 @@ function findAnswer(input: string): string {
     let score = 0
     let keywordLen = 0
     for (const keyword of intent.keywords) {
-      if (text.includes(keyword)) {
+      // Lowercase both sides — the input is already lowercased, but a
+      // mixed-case keyword entry would silently never match otherwise.
+      if (text.includes(keyword.toLowerCase())) {
         score++
         keywordLen = Math.max(keywordLen, keyword.length)
       }
@@ -556,6 +581,18 @@ export function ChatBot() {
       return true
     }
   })
+  // Speech-recognition language: "en-PH" for English, "fil-PH" for
+  // Filipino/Tagalog. Persisted so the mic always starts in the user's
+  // chosen language — the Web Speech API only recognizes the language it
+  // was told to expect, which is why Tagalog used to come out garbled.
+  const [sttLang, setSttLang] = useState<SttLang>(() => {
+    if (typeof window === "undefined") return "en-PH"
+    try {
+      return localStorage.getItem("chatbot-stt-lang") === "fil-PH" ? "fil-PH" : "en-PH"
+    } catch {
+      return "en-PH"
+    }
+  })
   const [listening, setListening] = useState(false)
   /** SCORPI overlay: opened from the mic button; hides robot + chatbox. */
   const [scorpiOpen, setJarvisOpen] = useState(false)
@@ -581,6 +618,12 @@ export function ChatBot() {
   const discardTranscriptRef = useRef(false)
   // Mirrors scorpiOpen for use inside recognition timeouts/callbacks.
   const scorpiOpenRef = useRef(false)
+  // Mirrors sttLang so the long-lived recognition auto-restarts always
+  // pick up the latest language right after a toggle.
+  const sttLangRef = useRef<SttLang>(sttLang)
+  useEffect(() => {
+    sttLangRef.current = sttLang
+  }, [sttLang])
   const meterRafRef = useRef<number | null>(null)
   const meterCleanupRef = useRef<(() => void) | null>(null)
   const talkRafRef = useRef<number | null>(null)
@@ -854,6 +897,29 @@ export function ChatBot() {
     if (!next) stopSpeaking()
   }
 
+  /** Switch the mic between English (en-PH) and Filipino/Tagalog (fil-PH).
+   *  Any live recognition session restarts so the new language applies at once. */
+  function toggleSttLang() {
+    const next: SttLang = sttLangRef.current === "fil-PH" ? "en-PH" : "fil-PH"
+    setSttLang(next)
+    sttLangRef.current = next
+    try {
+      localStorage.setItem("chatbot-stt-lang", next)
+    } catch {
+      // ignore
+    }
+    // Abort the current session (the discard flag blocks its partial
+    // transcript from being sent), then listen again in the new language.
+    if (scorpiOpenRef.current && recognitionRef.current) {
+      discardTranscriptRef.current = true
+      recognitionRef.current.abort()
+      window.setTimeout(() => {
+        discardTranscriptRef.current = false
+        startListening()
+      }, 200)
+    }
+  }
+
   /** Start a voice session; auto-restarts so SCORPI keeps listening. */
   function startListening() {
     const SpeechRecognition = getSpeechRecognition()
@@ -876,9 +942,11 @@ export function ChatBot() {
 
     const recognition = new SpeechRecognition()
     let finalTranscript = ""
-    // Filipino-accented English is recognized far better with en-PH first;
-    // the browser falls back to plain en if the locale isn't available.
-    recognition.lang = "en-PH"
+    // The recognizer only understands the language it was told to expect:
+    // "en-PH" for (Filipino-accented) English, "fil-PH" for Tagalog.
+    // The toggle in the SCORPI overlay flips this; the ref keeps the
+    // always-listening auto-restarts in sync.
+    recognition.lang = sttLangRef.current
     recognition.interimResults = true
     // Non-continuous so the browser finalizes fast after the user pauses;
     // we restart ourselves for the always-listening feel.
@@ -1060,12 +1128,12 @@ export function ChatBot() {
           : findAnswer(trimmed)
       setMessages((prev) => [...prev, { from: "bot", text: replyText }])
       setAiReplyText(replyText)
-      if (ttsEnabled) void speakReply(replyText)
+      if (ttsEnabled) void speakReply(replyText, sttLangRef.current)
     } catch {
       const fallbackReply = findAnswer(trimmed)
       setMessages((prev) => [...prev, { from: "bot", text: fallbackReply }])
       setAiReplyText(fallbackReply)
-      if (ttsEnabled) void speakReply(fallbackReply)
+      if (ttsEnabled) void speakReply(fallbackReply, sttLangRef.current)
     } finally {
       setTyping(false)
       // SCORPI mode: after the bot answers, go straight back to listening —
@@ -1341,6 +1409,36 @@ export function ChatBot() {
               <FaTimes />
             </button>
 
+            {/* Voice-language toggle — EN vs FIL. The Web Speech API only
+                recognizes the language it was set to, so Tagalog speech
+                needs fil-PH and English needs en-PH. */}
+            <button
+              type="button"
+              onClick={toggleSttLang}
+              aria-label={
+                sttLang === "fil-PH"
+                  ? "Voice language: Filipino — tap to switch to English"
+                  : "Voice language: English — tap to switch to Filipino"
+              }
+              title={
+                sttLang === "fil-PH"
+                  ? "Kinikilala: FILIPINO (Tagalog) — pindutin para sa English"
+                  : "Listening in ENGLISH — pindutin para sa Filipino (Tagalog)"
+              }
+              className="flex h-11 items-center justify-center rounded-full px-4 text-xs font-bold text-white transition-transform hover:scale-110"
+              style={{
+                position: "absolute",
+                top: "1.25rem",
+                left: "1.25rem",
+                background: "rgba(255,255,255,0.08)",
+                border: `1px solid ${sttLang === "fil-PH" ? "rgba(251,191,36,0.7)" : "rgba(255,255,255,0.25)"}`,
+                color: sttLang === "fil-PH" ? "#fbbf24" : "#ffffff",
+                zIndex: 2,
+              }}
+            >
+              {sttLang === "fil-PH" ? "🇵🇭 FIL" : "EN"}
+            </button>
+
             <div className="relative z-[1] flex w-full max-w-md flex-col items-center text-center">
               <div
                 className="text-xs font-semibold uppercase"
@@ -1546,7 +1644,14 @@ export function ChatBot() {
                             You
                           </span>
                         )}
-                        {scorpiText || (listening ? "Speak now — I'm listening..." : "I'm listening...")}
+                        {scorpiText ||
+                          (listening
+                            ? sttLang === "fil-PH"
+                              ? "Magsalita na — nakikinig ako..."
+                              : "Speak now — I'm listening..."
+                            : sttLang === "fil-PH"
+                              ? "Nakikinig ako..."
+                              : "I'm listening...")}
                       </p>
                       {/* Line 2 — Scorpi's answer for that speech (reset each round) */}
                       <p
