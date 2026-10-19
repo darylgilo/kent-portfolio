@@ -24,6 +24,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "GROQ_API_KEY is not configured" }, { status: 500 });
     }
 
+    // Conversation memory: keep only well-formed turns (newest last), capped
+    // both in count and per-message length so a client can never blow up the
+    // context window. Everything before this window is dropped.
+    type ChatTurn = { role: "user" | "assistant"; content: string };
+    const history: ChatTurn[] = (Array.isArray(messages) ? messages : [])
+      .slice(-16)
+      .map((m: { role?: unknown; content?: unknown }): ChatTurn | null => {
+        const role =
+          m?.role === "user" || m?.role === "assistant" ? (m.role as ChatTurn["role"]) : null;
+        const content = typeof m?.content === "string" ? m.content.trim().slice(0, 1500) : "";
+        return role && content ? { role, content } : null;
+      })
+      .filter((m: ChatTurn | null): m is ChatTurn => m !== null);
+
     const portfolioContext = `
 You are a polite, helpful, and highly efficient AI chatbot assistant for ${PORTFOLIO_OWNER}'s portfolio website. Always keep your responses concise, direct, and limited to a maximum of 2-3 sentences unless a longer explanation is explicitly requested. Mirror the user's language: use clear and conversational English by default, but reply in natural, conversational Filipino/Tagalog whenever the user writes in Filipino/Tagalog (or Taglish). Avoid unnecessary fluff and repetitive phrases to keep the conversation engaging.
 
@@ -57,6 +71,8 @@ Projects: ${PROJECTS.map((p) => `${p.name}: ${p.description}`).join(" | ")}
 Certificates: ${CERTIFICATES.map((c) => `${c.name} by ${c.issuer}`).join(", ")}
 Contact: Email ${SOCIALS.email}, GitHub ${SOCIALS.github}, LinkedIn ${SOCIALS.linkedin}, Facebook ${SOCIALS.facebook}
 
+CONVERSATION MEMORY: You remember details the user shared earlier in THIS same conversation (e.g. names, places, preferences, prior answers you gave) — use them naturally to answer follow-up questions like "anong island yun" or "sino nga yun".
+
 RULES:
 - You represent Kent. Answer as his portfolio assistant bot.
 - NEVER output programming code, code blocks, or code snippets. Explain concepts in plain words only.
@@ -77,10 +93,7 @@ RULES:
         },
         body: JSON.stringify({
           model,
-          messages: [
-            { role: "system", content: portfolioContext },
-            ...messages.slice(-10),
-          ],
+          messages: [{ role: "system", content: portfolioContext }, ...history],
           temperature: 0.7,
           max_tokens: 500,
         }),

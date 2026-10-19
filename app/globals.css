@@ -116,27 +116,24 @@ html {
   animation: scorpi-orb-talk 2.8s ease-in-out infinite;
 }
 
-/* SCORPI outline rings: rotate while listening. */
-@keyframes scorpi-ring-spin {
+/* SCORPI outer HUD interface: the segmented arcs slowly rotate around the
+   visualizer like a scanner ring. */
+@keyframes scorpi-hud-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-@keyframes scorpi-ring-spin-reverse {
+@keyframes scorpi-hud-spin-rev {
   from { transform: rotate(360deg); }
   to { transform: rotate(0deg); }
 }
 
-.scorpi-ring-spin {
-  animation: scorpi-ring-spin 28s linear infinite;
+.scorpi-hud-spin-rev {
+  animation: scorpi-hud-spin-rev 55s linear infinite;
 }
 
-.scorpi-ring-spin-reverse {
-  animation: scorpi-ring-spin-reverse 20s linear infinite;
-}
-
-.scorpi-ring-spin-slow {
-  animation: scorpi-ring-spin 44s linear infinite;
+.scorpi-hud-spin-fast {
+  animation: scorpi-hud-spin 16s linear infinite;
 }
 
 /* SCORPI dialogue: the You/Scorpi lines swap places (seesaw) while the next

@@ -79,6 +79,41 @@ function pickRecorderMime(): string | undefined {
 /** ISO 639-1 language Whisper detected for the latest clip ("tl"/"en"). */
 type DetectedLang = "tl" | "en"
 
+/** Bars in the circular audio visualizer around the SCORPI orb. Dense,
+ *  needle-like, with a stable random amplitude/phase per bar so the ring
+ *  takes on an organic flower silhouette while the AI speaks. */
+const VIS_BAR_COUNT = 120
+
+/** Bar color — the original soft blue of the HUD, one shade brighter. */
+const VIS_BAR_COLOR = "#bfdbfe"
+
+/** Deterministic pseudo-random helpers (same result every render). */
+function visRand(i: number, seed: number): number {
+  const r = Math.abs(Math.sin(i * seed) * 43758.5453)
+  return r - Math.floor(r)
+}
+
+/** Per-bar length hierarchy: some needles are long, most mid, some short. */
+const VIS_BAR_AMP = Array.from({ length: VIS_BAR_COUNT }, (_, i) => 0.3 + 0.7 * visRand(i + 1, 12.9898))
+/** Per-bar motion phase so each needle bobs out of sync with its neighbours. */
+const VIS_BAR_PHASE = Array.from(
+  { length: VIS_BAR_COUNT },
+  (_, i) => visRand(i + 1, 78.233) * Math.PI * 2
+)
+
+/** Point on a circle centered at (100,100) — angle in degrees, 0 = right. */
+function hudPoint(angleDeg: number, r: number): [number, number] {
+  const a = (angleDeg * Math.PI) / 180
+  return [100 + r * Math.cos(a), 100 + r * Math.sin(a)]
+}
+
+/** SVG arc path from angle a1 to a2 (degrees) on radius r around (100,100). */
+function hudArc(a1: number, a2: number, r: number): string {
+  const [x1, y1] = hudPoint(a1, r)
+  const [x2, y2] = hudPoint(a2, r)
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`
+}
+
 /** Turn chat text ("> " bullets, ALL CAPS, newlines) into speakable sentences. */
 function stripForSpeech(text: string): string {
   return text
@@ -631,14 +666,52 @@ function findAnswer(input: string): string {
   return best ? best.answer : FALLBACK
 }
 
+/** Opening line shown when there is no stored conversation yet. */
+const WELCOME_MESSAGE: Message = {
+  from: "bot",
+  text: "HELLO! I AM SCORPI. ASK ME ANYTHING ABOUT MY MASTER KENT!",
+}
+
+/** localStorage key + cap for the persisted chat history (conversation memory). */
+const CHAT_HISTORY_KEY = "chatbot-history"
+const CHAT_HISTORY_LIMIT = 40
+
+/**
+ * Restore the previous conversation so SCORPI remembers what was said even
+ * after a page reload or a new visit. Malformed entries are dropped.
+ */
+function loadStoredHistory(): Message[] {
+  if (typeof window === "undefined") return [WELCOME_MESSAGE]
+  try {
+    const raw = localStorage.getItem(CHAT_HISTORY_KEY)
+    if (!raw) return [WELCOME_MESSAGE]
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return [WELCOME_MESSAGE]
+    const valid = parsed.filter(
+      (m): m is Message =>
+        !!m &&
+        (m.from === "user" || m.from === "bot") &&
+        typeof m.text === "string" &&
+        m.text.trim() !== ""
+    )
+    return valid.length > 0 ? valid.slice(-CHAT_HISTORY_LIMIT) : [WELCOME_MESSAGE]
+  } catch {
+    return [WELCOME_MESSAGE]
+  }
+}
+
+/** Persist the conversation (newest turns only) after every exchange. */
+function saveStoredHistory(msgs: Message[]) {
+  try {
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(msgs.slice(-CHAT_HISTORY_LIMIT)))
+  } catch {
+    // Storage full or unavailable (private mode) — memory just won't persist.
+  }
+}
+
 export function ChatBot() {
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      from: "bot",
-      text: "HELLO! I AM SCORPI. ASK ME ANYTHING ABOUT MY MASTER KENT!",
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>(loadStoredHistory)
   const [input, setInput] = useState("")
   const [typing, setTyping] = useState(false)
   // Restore the saved TTS preference (default: on). Reading storage in a lazy
@@ -697,6 +770,11 @@ export function ChatBot() {
   useEffect(() => {
     detectedLangRef.current = detectedLang
   }, [detectedLang])
+  // Conversation memory: persist every exchange so SCORPI still knows what
+  // was said in earlier sessions (page reloads, panel closes).
+  useEffect(() => {
+    saveStoredHistory(messages)
+  }, [messages])
   const meterRafRef = useRef<number | null>(null)
   const meterCleanupRef = useRef<(() => void) | null>(null)
   const talkRafRef = useRef<number | null>(null)
@@ -706,6 +784,9 @@ export function ChatBot() {
   const talkLevelRef = useRef(0)
   const micLevelRef = useRef(0)
   const ringCurRef = useRef(0.18)
+  // Bar elements of the circular audio visualizer, mutated directly by a
+  // 60fps loop (no React re-renders per frame).
+  const visBarRefs = useRef<(SVGLineElement | null)[]>([])
   // Smoothed ring level — eases toward the live voice level so the HUD
   // rings glide instead of snapping when states flip (speaking end ->
   // listening gap, meter restarts). Never drops below the calm baseline.
@@ -777,6 +858,47 @@ export function ChatBot() {
       if (Math.abs(next - lastSent) > 0.005) {
         lastSent = next
         setRingSmooth(next)
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [scorpiOpen])
+
+  // Circular audio visualizer loop: runs while the SCORPI overlay is open
+  // and mutates the radial bar lengths directly at 60fps. Bars swell with
+  // the AI's real voice level while it speaks (traveling wave around the
+  // ring), follow the mic gently while listening, and breathe subtly when
+  // idle — no React state churn per frame.
+  useEffect(() => {
+    if (!scorpiOpen) return
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const t = (now - start) / 1000
+      const level = speakingRef.current
+        ? talkLevelRef.current
+        : micLevelRef.current > 0.05
+          ? micLevelRef.current * 0.5
+          : 0
+      const bars = visBarRefs.current
+      for (let i = 0; i < bars.length; i++) {
+        const bar = bars[i]
+        if (!bar) continue
+        // Per-needle bob: each bar swings on its own phase, scaled by its
+        // stable amplitude so long needles reach far and short ones ripple.
+        const wobble = 0.35 + 0.65 * Math.abs(Math.sin(t * 2.4 + VIS_BAR_PHASE[i]))
+        // Slow "petal" banding — travelling clumps of long needles that
+        // give the ring its flower silhouette.
+        const petal = 0.55 + 0.45 * Math.abs(Math.sin(t * 0.9 + i * 0.1))
+        // Slow idle breathing keeps the ring alive between replies.
+        const idle = 0.05 * (1 + Math.sin(t * 1.2 + i * 0.3))
+        const len = 1.5 + 15.5 * Math.min(1, level * VIS_BAR_AMP[i] * wobble * petal + idle)
+        // y1 is pinned at 18 (inner radius 82 — leaves a clear gap between
+        // the orb edge at ~72 and the needles); grow the bar outward.
+        bar.setAttribute("y2", (18 - len).toFixed(2))
+        // Longer needles glow brighter — reinforces the petal outline.
+        bar.setAttribute("opacity", (0.55 + 0.45 * Math.min(1, len / 17)).toFixed(2))
       }
       raf = requestAnimationFrame(tick)
     }
@@ -1298,11 +1420,10 @@ export function ChatBot() {
     }
   }
 
-  // Shared level driving the HUD rings in all states — smoothed every
-  // frame by the session loop above, so the rings glide (never snap)
-  // across listening -> speaking -> gap -> listening transitions.
-  // Rings stay mounted the whole SCORPI session, so rotation never
-  // restarts and the level never drops below a calm idle baseline.
+  // Shared level driving the HUD glow & orb bob in all states — smoothed
+  // every frame by the session loop above, so visuals glide (never snap)
+  // across listening -> speaking -> gap -> listening transitions. The
+  // visualizer bars read the live level refs directly at 60fps instead.
   const ringDisplay = Math.max(ringSmooth, 0.18)
   // Dialogue order: normally You on top, Scorpi below. While the user speaks
   // a NEW round (live transcript + previous answer both on screen) the pair
@@ -1550,7 +1671,7 @@ export function ChatBot() {
               </div>
 
               <div
-                className={`relative mt-4 h-72 w-72 sm:h-80 sm:w-80 ${speaking ? "scorpi-orb-talking" : ""}`}
+                className={`relative mt-10 h-72 w-72 sm:h-80 sm:w-80 ${speaking ? "scorpi-orb-talking" : ""}`}
                 style={{
                   // Breathing glow eases via CSS transition (no snap when the
                   // talk level jumps frame to frame).
@@ -1602,107 +1723,98 @@ export function ChatBot() {
                       // Glow follows whichever voice is active — smooth handoff
                       // listening -> speaking with no sudden on/off snap.
                       filter: `drop-shadow(0 0 ${8 + ringDisplay * 14}px rgba(96,165,250,${0.7 + ringDisplay * 0.3}))`,
+                      // The outer HUD interface arcs sit just past the
+                      // viewBox edge — let them draw outside the SVG box.
+                      overflow: "visible",
                     }}
                   >
-                    {/* HUD rings — constant rotation speed; voice only drives
-                        glow, thickness & a gentle "hover" lift. Orb stays still. */}
-                    {/* Outer segmented arcs, slow clockwise */}
-                    <g
-                      className="scorpi-ring-spin-slow"
-                      style={{
-                        transformOrigin: "100px 100px",
-                        opacity: 0.55 + ringDisplay * 0.45,
-                        // Gentle "hover" lift that grows with voice level.
-                        scale: `${1 + ringDisplay * 0.035}`,
-                      }}
-                    >
-                      <circle
-                        cx="100"
-                        cy="100"
-                        r="96"
-                        fill="none"
-                        stroke="#60a5fa"
-                        strokeWidth={3 + ringDisplay * 2.5}
+                    {/* Circular audio visualizer — a radial equalizer ring
+                        that swells with the AI's real voice level while it
+                        speaks, follows the mic while listening, and breathes
+                        subtly when idle. Bars are mutated at 60fps by the
+                        visualizer loop above (no re-renders). */}
+                    {Array.from({ length: VIS_BAR_COUNT }, (_, i) => (
+                      <line
+                        key={i}
+                        ref={(el) => {
+                          visBarRefs.current[i] = el
+                        }}
+                        x1="100"
+                        y1="18"
+                        x2="100"
+                        y2="16.5"
+                        stroke={VIS_BAR_COLOR}
+                        strokeWidth="1.5"
                         strokeLinecap="round"
-                        strokeDasharray="55 40 15 40"
+                        opacity="0.55"
+                        transform={`rotate(${(360 / VIS_BAR_COUNT) * i} 100 100)`}
                       />
-                      {/* Orbiting glow dot pinned to the outer arc — grows with voice */}
-                      <circle cx="100" cy="4" r={3 + ringDisplay * 2.5} fill="#bfdbfe">
-                        <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
-                      </circle>
-                    </g>
-                    {/* Long elegant arcs, medium clockwise */}
+                    ))}
+                    {/* Outer HUD interface — ruler ticks + dashed guide ring
+                        with accent blocks, rotating at different speeds like
+                        a scanner. Brightness follows the voice level so the
+                        rings flare while the AI talks. */}
+                    {/* Ruler ticks — every 6th tick longer, slow counter-rotation */}
                     <g
-                      className="scorpi-ring-spin"
+                      className="scorpi-hud-spin-rev"
                       style={{
                         transformOrigin: "100px 100px",
                         opacity: 0.7 + ringDisplay * 0.3,
-                        scale: `${1 + ringDisplay * 0.025}`,
                       }}
                     >
-                      <circle
-                        cx="100"
-                        cy="100"
-                        r="88"
-                        fill="none"
-                        stroke="#93c5fd"
-                        strokeWidth={2.5 + ringDisplay * 2}
-                        strokeLinecap="round"
-                        strokeDasharray="90 35 30 35"
-                      />
+                      {Array.from({ length: 72 }, (_, i) => {
+                        const major = i % 6 === 0
+                        const [x1, y1] = hudPoint(i * 5, 112)
+                        const [x2, y2] = hudPoint(i * 5, major ? 118 : 115.5)
+                        return (
+                          <line
+                            key={`hud-tick-${i}`}
+                            x1={x1.toFixed(2)}
+                            y1={y1.toFixed(2)}
+                            x2={x2.toFixed(2)}
+                            y2={y2.toFixed(2)}
+                            stroke={major ? "#dbeafe" : "#93c5fd"}
+                            strokeWidth={major ? 2 : 1.2}
+                            strokeLinecap="round"
+                          />
+                        )
+                      })}
                     </g>
-                    {/* Tick-mark ring, counter-clockwise */}
+                    {/* Dashed guide ring + accent blocks, fastest clockwise */}
                     <g
-                      className="scorpi-ring-spin-reverse"
+                      className="scorpi-hud-spin-fast"
                       style={{
                         transformOrigin: "100px 100px",
-                        opacity: 0.5 + ringDisplay * 0.5,
-                        scale: `${1 + ringDisplay * 0.02}`,
-                      }}
-                    >
-                      <circle
-                        cx="100"
-                        cy="100"
-                        r="80"
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth={1.5 + ringDisplay * 1.5}
-                        strokeLinecap="round"
-                        strokeDasharray="3 7"
-                        opacity="0.8"
-                      />
-                      {/* Orbiting glow dot on the tick ring — grows with voice */}
-                      <circle cx="180" cy="100" r={2.2 + ringDisplay * 2} fill="#93c5fd">
-                        <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.6s" repeatCount="indefinite" />
-                      </circle>
-                    </g>
-                    {/* Inner accent dashes, fast counter-clockwise */}
-                    <g
-                      className="scorpi-ring-spin-reverse"
-                      style={{
-                        transformOrigin: "100px 100px",
-                        animationDuration: "12s",
                         opacity: 0.6 + ringDisplay * 0.4,
-                        scale: `${1 + ringDisplay * 0.015}`,
                       }}
                     >
                       <circle
                         cx="100"
                         cy="100"
-                        r="72"
+                        r="101"
                         fill="none"
-                        stroke="#38bdf8"
-                        strokeWidth={1.5 + ringDisplay * 1.5}
-                        strokeLinecap="round"
-                        strokeDasharray="22 18 6 18"
-                        opacity="0.9"
+                        stroke="#60a5fa"
+                        strokeWidth="1.4"
+                        strokeDasharray="16 5"
                       />
+                      {Array.from({ length: 3 }, (_, i) => {
+                        const start = i * 120 + 20
+                        return (
+                          <path
+                            key={`hud-blk-${i}`}
+                            d={hudArc(start, start + 8, 101)}
+                            fill="none"
+                            stroke="#e0f2fe"
+                            strokeWidth={3}
+                          />
+                        )
+                      })}
                     </g>
                   </svg>
                 )}
               </div>
 
-              <div className="mt-4 w-full space-y-1.5 text-center text-sm leading-relaxed">
+              <div className="mt-10 w-full space-y-1.5 text-center text-sm leading-relaxed">
                 {/* Seesaw dialogue — You on top / Scorpi below, EXCEPT while the
                     user speaks a new round: the previous answer rides on top and
                     the live transcript sits under it. Remounting on each swap
