@@ -499,7 +499,7 @@ export function ModernPortfolio() {
                     className="absolute right-3 top-3 rounded-full px-3 py-1 text-[9px] font-bold text-white"
                     style={{ background: "linear-gradient(90deg, var(--accent), var(--accent-2))" }}
                   >
-                    VIEW APP →
+                    VIEW →
                   </span>
                 </div>
                 <div className="p-5">

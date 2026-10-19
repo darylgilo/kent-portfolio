@@ -75,7 +75,6 @@ export const TECHNOLOGIES: Technology[] = [
 
 export const PROJECTS: Project[] = [
   { name: "GEOLOCATION APP", description: "Location tracking and mapping application", image: "/api/projects/geolocation app.jpg" },
-  { name: "CPMDWORKSPACE APP", description: "Workspace management system", image: "/api/projects/workspace.png" },
   { name: "TASKBOARD SYSTEM APP", description: "Task and project management board", image: "/api/projects/taskboard.png" },
   { name: "INVENTORY APP", description: "Stock and inventory tracking system", image: "/api/projects/inventory system.png" },
   { name: "WRITEUP APP", description: "Document writing and editing tool", image: "/api/projects/writeup.png" },

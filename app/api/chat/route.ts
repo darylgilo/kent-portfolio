@@ -11,6 +11,40 @@ import {
   CERTIFICATES,
 } from "@/lib/portfolio-data";
 
+type AiPayload = { reply: string; outline: string[] };
+
+/**
+ * The model is asked to answer as {"reply": "...", "outline": [...]}.
+ * Be forgiving: accept the JSON directly, extracted from inside prose or
+ * fences, and fall back to treating the whole raw text as the plain reply
+ * (the old behavior) when parsing fails.
+ */
+function parseAiPayload(raw: string): AiPayload {
+  const text = raw.trim();
+  const candidates = [text];
+  const s = text.indexOf("{");
+  const e = text.lastIndexOf("}");
+  if (s >= 0 && e > s) candidates.push(text.slice(s, e + 1));
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as { reply?: unknown; outline?: unknown };
+      const reply = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
+      const outline = Array.isArray(parsed.outline)
+        ? parsed.outline
+            .filter((x): x is string => typeof x === "string")
+            .map((x) => x.trim().slice(0, 120))
+            .filter((x) => x !== "")
+            .slice(0, 8)
+        : [];
+      if (reply) return { reply, outline };
+    } catch {
+      // not valid JSON — try the next candidate
+    }
+  }
+  return { reply: text, outline: [] };
+}
+
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
@@ -73,6 +107,11 @@ Contact: Email ${SOCIALS.email}, GitHub ${SOCIALS.github}, LinkedIn ${SOCIALS.li
 
 CONVERSATION MEMORY: You remember details the user shared earlier in THIS same conversation (e.g. names, places, preferences, prior answers you gave) — use them naturally to answer follow-up questions like "anong island yun" or "sino nga yun".
 
+RESPONSE FORMAT — respond with ONLY one JSON object (no code fences, no extra text), shaped exactly like:
+{"reply": "...", "outline": [...]}
+- "reply": your full conversational answer, following ALL rules above (same language mirroring, same length and tone).
+- "outline": a short related list shown in the UI's side panel — 4 to 8 concise items (each under ~10 words) of fundamentals, key points, steps, or subtopics tied to the question (e.g. for "what is JavaScript" list the core fundamentals to learn). Use [] for greetings, chit-chat, thanks, or questions with no natural list.
+
 RULES:
 - You represent Kent. Answer as his portfolio assistant bot.
 - NEVER output programming code, code blocks, or code snippets. Explain concepts in plain words only.
@@ -82,6 +121,7 @@ RULES:
 
     const models = ["qwen/qwen3.8-27b", "openai/gpt-oss-20b", "openai/gpt-oss-120b"];
     let reply: string | null = null;
+    let outline: string[] = [];
     let lastError = "";
 
     for (const model of models) {
@@ -95,14 +135,20 @@ RULES:
           model,
           messages: [{ role: "system", content: portfolioContext }, ...history],
           temperature: 0.7,
-          max_tokens: 500,
+          // Room for the JSON wrapper + outline items alongside the answer.
+          max_tokens: 700,
         }),
       });
 
       if (groqRes.ok) {
         const data = await groqRes.json();
-        reply = data?.choices?.[0]?.message?.content ?? null;
-        if (reply) break;
+        const raw = data?.choices?.[0]?.message?.content ?? null;
+        if (raw) {
+          const parsed = parseAiPayload(raw);
+          reply = parsed.reply;
+          outline = parsed.outline;
+          break;
+        }
       } else {
         lastError = await groqRes.text();
         console.error(`GROQ error (${model}):`, lastError);
@@ -113,7 +159,7 @@ RULES:
       return NextResponse.json({ error: "AI request failed" }, { status: 502 });
     }
 
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply, outline });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

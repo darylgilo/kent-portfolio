@@ -136,6 +136,27 @@ html {
   animation: scorpi-hud-spin 16s linear infinite;
 }
 
+/* SCORPI data panel: long answers slide in from the right like a HUD
+   readout opening on a machine console. */
+@keyframes scorpi-panel-in {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.scorpi-panel-in {
+  animation: scorpi-panel-in 320ms ease-out both;
+}
+
+/* Mirror slide-in for the left KEY POINTS panel. */
+@keyframes scorpi-panel-in-left {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.scorpi-panel-in-left {
+  animation: scorpi-panel-in-left 320ms ease-out both;
+}
+
 /* SCORPI dialogue: the You/Scorpi lines swap places (seesaw) while the next
    round is transcribed — a soft slide in the direction of the new order. */
 @keyframes scorpi-lines-swap-up {

@@ -6,7 +6,7 @@ import dynamic from "next/dynamic"
 import "./CrystalizedBall.css"
 import ScorpioBackground from "./ScorpioBackground"
 import { Lottie } from "lottie-react"
-import { FaRobot, FaPaperPlane, FaTimes, FaSmile, FaVolumeUp, FaVolumeOff, FaMicrophone } from "react-icons/fa"
+import { FaRobot, FaPaperPlane, FaTimes, FaSmile, FaVolumeUp, FaVolumeOff, FaMicrophone, FaRedo } from "react-icons/fa"
 
 type CrystalizedBallProps = {
   preset?: string
@@ -477,7 +477,6 @@ async function speakReply(text: string, lang: DetectedLang = "en") {
 
 const PROJECTS = [
   "GEOLOCATION APP — Location tracking and mapping application",
-  "CPMDWORKSPACE APP — Workspace management system",
   "TASKBOARD SYSTEM APP — Task and project management board",
   "INVENTORY APP — Stock and inventory tracking system",
   "WRITEUP APP — Document writing and editing tool",
@@ -714,6 +713,20 @@ export function ChatBot() {
   const [messages, setMessages] = useState<Message[]>(loadStoredHistory)
   const [input, setInput] = useState("")
   const [typing, setTyping] = useState(false)
+
+  /** Start a fresh conversation: clear display, memory, and persisted history. */
+  function clearHistory() {
+    stopSpeaking()
+    setMessages([WELCOME_MESSAGE])
+    setAiReplyText("")
+    setAiOutline([])
+    setJarvisText("")
+    try {
+      localStorage.removeItem(CHAT_HISTORY_KEY)
+    } catch {
+      // storage unavailable — in-memory state is already cleared
+    }
+  }
   // Restore the saved TTS preference (default: on). Reading storage in a lazy
   // initializer avoids setState-in-effect and matches SSR output because the
   // panel is closed during hydration.
@@ -737,6 +750,8 @@ export function ChatBot() {
   const [scorpiText, setJarvisText] = useState("")
   /** AI answer line shown below the user's speech (reset per exchange). */
   const [aiReplyText, setAiReplyText] = useState("")
+  /** Structured list from the AI (fundamentals/steps) for the left HUD panel. */
+  const [aiOutline, setAiOutline] = useState<string[]>([])
   /** True while the mic is transcribing a NEW round's live line. Drives the
    *  You/Scorpi seesaw: while it's on and a previous answer is still shown,
    *  that answer rides on top and the live transcript sits under it. */
@@ -1345,6 +1360,7 @@ export function ChatBot() {
     // New exchange: clear the previous AI answer line right away and flip
     // the dialogue back to You-on-top while Scorpi's new reply loads.
     setAiReplyText("")
+    setAiOutline([])
     setLiveTranscribing(false)
     setTyping(true)
     try {
@@ -1365,6 +1381,7 @@ export function ChatBot() {
           : findAnswer(trimmed)
       setMessages((prev) => [...prev, { from: "bot", text: replyText }])
       setAiReplyText(replyText)
+      setAiOutline(Array.isArray(data.outline) ? data.outline : [])
       if (ttsEnabled) void speakReply(replyText, detectedLangRef.current)
     } catch {
       const fallbackReply = findAnswer(trimmed)
@@ -1430,6 +1447,9 @@ export function ChatBot() {
   // swaps — Scorpi's last answer rides on top, the live line under it — then
   // flips back the moment the user stops and the reply starts loading.
   const dialogueFlipped = liveTranscribing && aiReplyText !== ""
+  // Long answers (tutorials, multi-sentence explanations) get their own
+  // side HUD data panel — the small line under the orb can't hold them.
+  const longReply = aiReplyText.length > 180 || aiReplyText.includes("\n")
 
   return (
       <>
@@ -1460,7 +1480,7 @@ export function ChatBot() {
               }}
             >
               <FaSmile aria-hidden="true" />
-              <span>Hi</span>
+              <span>HI I&apos;m Scorpi</span>
             </button>
           )}
           <button
@@ -1510,6 +1530,16 @@ export function ChatBot() {
                 style={{ background: "rgba(255,255,255,0.15)" }}
               >
                 {ttsEnabled ? <FaVolumeUp /> : <FaVolumeOff />}
+              </button>
+              <button
+                type="button"
+                onClick={clearHistory}
+                aria-label="Clear conversation"
+                title="Clear conversation"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              >
+                <FaRedo />
               </button>
               <button
                 type="button"
@@ -1647,6 +1677,97 @@ export function ChatBot() {
             >
               <FaTimes />
             </button>
+
+            {/* Left reference panel — when the AI returns a related list
+                (fundamentals, steps, key points) it renders as a numbered
+                HUD readout on the LEFT, pairing with the answer panel on
+                the right. Wide screens only. */}
+            {scorpiOpen && aiOutline.length > 0 && (
+              <aside
+                aria-label="SCORPI reference list"
+                className="absolute left-4 top-1/2 z-[2] hidden w-[min(320px,26vw)] -translate-y-1/2 lg:block"
+              >
+                <div
+                  className="scorpi-panel-in-left max-h-[60vh] overflow-y-auto p-4 text-left"
+                  style={{
+                    background: "rgba(6, 16, 32, 0.82)",
+                    border: "1px solid rgba(96, 165, 250, 0.45)",
+                    backdropFilter: "blur(6px)",
+                    clipPath:
+                      "polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)",
+                    boxShadow: "0 0 24px rgba(59, 130, 246, 0.25)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: "0.3em",
+                      textTransform: "uppercase",
+                      color: "#7dd3fc",
+                      borderBottom: "1px solid rgba(96, 165, 250, 0.35)",
+                      paddingBottom: 8,
+                      marginBottom: 10,
+                    }}
+                  >
+                    SCORPI // KEY POINTS
+                  </div>
+                  <ol className="space-y-2 text-sm leading-relaxed text-slate-200">
+                    {aiOutline.map((item, i) => (
+                      <li key={`${i}-${item}`} className="flex gap-2.5">
+                        <span
+                          className="shrink-0 font-bold text-sky-300"
+                          style={{ fontVariantNumeric: "tabular-nums" }}
+                        >
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </aside>
+            )}
+
+            {/* Long-answer data panel — tutorials and long explanations
+                surface in a side HUD readout like a real AI machine, instead
+                of only the clamped line under the orb. Wide screens only
+                (narrow ones have no side room next to the centered column). */}
+            {scorpiOpen && longReply && (
+              <aside
+                aria-label="SCORPI data output"
+                className="absolute right-4 top-1/2 z-[2] hidden w-[min(340px,28vw)] -translate-y-1/2 lg:block"
+              >
+                <div
+                  className="scorpi-panel-in max-h-[60vh] overflow-y-auto p-4 text-left"
+                  style={{
+                    background: "rgba(6, 16, 32, 0.82)",
+                    border: "1px solid rgba(96, 165, 250, 0.45)",
+                    backdropFilter: "blur(6px)",
+                    clipPath:
+                      "polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)",
+                    boxShadow: "0 0 24px rgba(59, 130, 246, 0.25)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: "0.3em",
+                      textTransform: "uppercase",
+                      color: "#7dd3fc",
+                      borderBottom: "1px solid rgba(96, 165, 250, 0.35)",
+                      paddingBottom: 8,
+                      marginBottom: 10,
+                    }}
+                  >
+                    SCORPI // DATA OUTPUT
+                  </div>
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-slate-200">
+                    {aiReplyText}
+                    <span className="ml-1 inline-block animate-pulse text-sky-300">▌</span>
+                  </p>
+                </div>
+              </aside>
+            )}
 
             <div className="relative z-[1] flex w-full max-w-md flex-col items-center text-center">
               <div
