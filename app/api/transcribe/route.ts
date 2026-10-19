@@ -12,19 +12,19 @@ export async function POST(req: Request) {
 
     const form = await req.formData();
     const audio = form.get("audio");
-    const language = form.get("language");
 
     if (!(audio instanceof File) || audio.size === 0) {
       return NextResponse.json({ error: "audio file is required" }, { status: 400 });
     }
 
-    // Whisper speaks ISO 639-1 — "tl" (Tagalog/Filipino) or "en".
-    const lang = typeof language === "string" && ["tl", "en"].includes(language) ? language : undefined;
-
     const groqForm = new FormData();
     groqForm.append("file", audio, audio.name || "speech.webm");
     groqForm.append("model", "whisper-large-v3-turbo");
-    if (lang) groqForm.append("language", lang);
+    // No language hint: Whisper auto-detects per clip, so Tagalog, English
+    // and Taglish all transcribe correctly without a manual toggle.
+    // verbose_json also reports WHICH language it heard, which the client
+    // uses to adapt its prompts and fallback TTS voice automatically.
+    groqForm.append("response_format", "verbose_json");
 
     const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",
@@ -40,7 +40,14 @@ export async function POST(req: Request) {
 
     const data = await groqRes.json();
     const text = typeof data?.text === "string" ? data.text.trim() : "";
-    return NextResponse.json({ text });
+    // Groq reports the detected language as a full name ("English",
+    // "Tagalog"); normalize to the ISO 639-1 code the client expects.
+    const rawLang = typeof data?.language === "string" ? data.language.trim().toLowerCase() : "";
+    const language =
+      rawLang === "tl" || rawLang.startsWith("tagalog") || rawLang.startsWith("filipino")
+        ? "tl"
+        : "en";
+    return NextResponse.json({ text, language });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

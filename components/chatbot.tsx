@@ -76,8 +76,8 @@ function pickRecorderMime(): string | undefined {
   return RECORDER_MIME_TYPES.find((t) => MediaRecorder.isTypeSupported(t))
 }
 
-/** Transcription language: English (Philippines) or Filipino/Tagalog. */
-type SttLang = "en-PH" | "fil-PH"
+/** ISO 639-1 language Whisper detected for the latest clip ("tl"/"en"). */
+type DetectedLang = "tl" | "en"
 
 /** Turn chat text ("> " bullets, ALL CAPS, newlines) into speakable sentences. */
 function stripForSpeech(text: string): string {
@@ -229,7 +229,7 @@ function pickVoice(preferredPrefix = "en"): SpeechSynthesisVoice | null {
   )
 }
 
-function speak(text: string, lang: SttLang, gen: number) {
+function speak(text: string, gen: number, lang: DetectedLang = "en") {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     signalReplyStarted()
     return
@@ -241,11 +241,11 @@ function speak(text: string, lang: SttLang, gen: number) {
   }
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(clean)
-  // Match the reply voice to the mic language — a Filipino voice reads
-  // Tagalog text far better than an English one (and vice versa).
-  const voice = pickVoice(lang.startsWith("fil") ? "fil" : "en")
+  // Match the reply voice to the DETECTED mic language — a Filipino voice
+  // reads Tagalog text far better than an English one (and vice versa).
+  const voice = pickVoice(lang === "tl" ? "fil" : "en")
   if (voice) utterance.voice = voice
-  utterance.lang = voice?.lang ?? lang
+  utterance.lang = voice?.lang ?? (lang === "tl" ? "fil-PH" : "en-PH")
   activeUtterance = utterance
   utterance.onstart = () => {
     // A newer reply superseded this one — never let two voices overlap.
@@ -288,7 +288,10 @@ function stopSpeaking() {
 }
 
 /**
- * Try the premium ElevenLabs voice via our server proxy.
+ * Try the premium AI voice via our server proxy (ElevenLabs, falling back
+ * to Fish Audio server-side). The clip is played PROGRESSIVELY through
+ * MediaSource so speech starts as soon as the first audio chunk arrives
+ * instead of waiting for the whole file to download.
  * Returns true when audio actually started playing, false when the
  * caller should fall back to the free browser voice (no key, quota
  * used up, network issue, or autoplay blocked).
@@ -298,6 +301,7 @@ async function speakPremium(text: string, gen: number): Promise<boolean> {
   const clean = stripForSpeech(text).slice(0, 600)
   if (!clean) return false
   let audio: HTMLAudioElement | null = null
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   try {
     const res = await fetch("/api/voice", {
       method: "POST",
@@ -307,15 +311,77 @@ async function speakPremium(text: string, gen: number): Promise<boolean> {
     // Superseded while the clip was generating — a newer reply owns the
     // speakers now; bail before this stale voice can join in.
     if (gen !== ttsGeneration) return false
-    if (!res.ok) return false
-    const blob = await res.blob()
-    if (gen !== ttsGeneration) return false
-    const url = URL.createObjectURL(blob)
-    audio = new Audio(url)
+    if (!res.ok || !res.body) return false
+
+    const canStream =
+      typeof MediaSource !== "undefined" && MediaSource.isTypeSupported("audio/mpeg")
+
+    let url: string
+    if (canStream) {
+      // Progressive path: feed incoming chunks into a MediaSource so
+      // playback starts with the first ~seconds of audio.
+      const ms = new MediaSource()
+      url = URL.createObjectURL(ms)
+      audio = new Audio(url)
+      reader = res.body.getReader()
+      ms.addEventListener(
+        "sourceopen",
+        () => {
+          try {
+            const sb = ms.addSourceBuffer("audio/mpeg")
+            const pump = async () => {
+              try {
+                for (;;) {
+                  const { done, value } = await reader?.read() ?? { done: true, value: undefined }
+                  if (done) {
+                    if (sb.updating) {
+                      await new Promise<void>((r) =>
+                        sb.addEventListener("updateend", () => r(), { once: true })
+                      )
+                    }
+                    if (ms.readyState === "open") ms.endOfStream()
+                    return
+                  }
+                  if (!value) continue
+                  sb.appendBuffer(value as BufferSource)
+                  await new Promise<void>((r) =>
+                    sb.addEventListener("updateend", () => r(), { once: true })
+                  )
+                }
+              } catch {
+                // Stream cancelled or append failed — close what we have so
+                // playback can finish the already-buffered portion cleanly.
+                try {
+                  if (ms.readyState === "open") ms.endOfStream()
+                } catch {
+                  // ignore
+                }
+              }
+            }
+            void pump()
+          } catch {
+            try {
+              if (ms.readyState === "open") ms.endOfStream()
+            } catch {
+              // ignore
+            }
+          }
+        },
+        { once: true }
+      )
+    } else {
+      // Older browsers without MediaSource: buffer the whole clip first.
+      const blob = await res.blob()
+      if (gen !== ttsGeneration) return false
+      url = URL.createObjectURL(blob)
+      audio = new Audio(url)
+    }
+
     premiumAudio = audio
     notifyPremiumChange()
     attachPremiumAnalyser(audio)
     const release = () => {
+      void reader?.cancel().catch(() => {})
       URL.revokeObjectURL(url)
       if (premiumAudio === audio) premiumAudio = null
       teardownPremiumAnalyser()
@@ -340,6 +406,7 @@ async function speakPremium(text: string, gen: number): Promise<boolean> {
   } catch {
     // play() rejected (e.g. autoplay blocked): clear the leaked handle or
     // isPremiumPlaying() stays true forever and SCORPI strands at READY.
+    void reader?.cancel().catch(() => {})
     if (audio && premiumAudio === audio) {
       try {
         audio.pause()
@@ -357,7 +424,7 @@ async function speakPremium(text: string, gen: number): Promise<boolean> {
   }
 }
 
-async function speakReply(text: string, lang: SttLang = "en-PH") {
+async function speakReply(text: string, lang: DetectedLang = "en") {
   // Exactly ONE voice may ever be audible: stop whatever is playing, claim
   // the latest-generation token, and let every async step check it. This
   // kills the double-voice race where a stale ElevenLabs clip and the
@@ -370,7 +437,7 @@ async function speakReply(text: string, lang: SttLang = "en-PH") {
   const played = await speakPremium(text, gen)
   if (played) return
   if (gen !== ttsGeneration) return
-  speak(text, lang, gen)
+  speak(text, gen, lang)
 }
 
 const PROJECTS = [
@@ -585,18 +652,11 @@ export function ChatBot() {
       return true
     }
   })
-  // Speech-recognition language: "en-PH" for English, "fil-PH" for
-  // Filipino/Tagalog. Persisted so the mic always starts in the user's
-  // chosen language — the Web Speech API only recognizes the language it
-  // was told to expect, which is why Tagalog used to come out garbled.
-  const [sttLang, setSttLang] = useState<SttLang>(() => {
-    if (typeof window === "undefined") return "en-PH"
-    try {
-      return localStorage.getItem("chatbot-stt-lang") === "fil-PH" ? "fil-PH" : "en-PH"
-    } catch {
-      return "en-PH"
-    }
-  })
+  // Language Whisper detected on the latest clip — no manual EN/FIL toggle.
+  // Whisper auto-detects every clip, so Tagalog, English and Taglish all
+  // work as-is; this only drives the matching prompt text and the
+  // browser-TTS fallback voice.
+  const [detectedLang, setDetectedLang] = useState<DetectedLang>("en")
   const [listening, setListening] = useState(false)
   /** SCORPI overlay: opened from the mic button; hides robot + chatbox. */
   const [scorpiOpen, setJarvisOpen] = useState(false)
@@ -632,12 +692,11 @@ export function ChatBot() {
   const discardTranscriptRef = useRef(false)
   // Mirrors scorpiOpen for use inside recognition timeouts/callbacks.
   const scorpiOpenRef = useRef(false)
-  // Mirrors sttLang so the long-lived recognition auto-restarts always
-  // pick up the latest language right after a toggle.
-  const sttLangRef = useRef<SttLang>(sttLang)
+  // Mirrors detectedLang for use inside async transcription callbacks.
+  const detectedLangRef = useRef<DetectedLang>(detectedLang)
   useEffect(() => {
-    sttLangRef.current = sttLang
-  }, [sttLang])
+    detectedLangRef.current = detectedLang
+  }, [detectedLang])
   const meterRafRef = useRef<number | null>(null)
   const meterCleanupRef = useRef<(() => void) | null>(null)
   const talkRafRef = useRef<number | null>(null)
@@ -922,29 +981,6 @@ export function ChatBot() {
     if (!next) stopSpeaking()
   }
 
-  /** Switch the mic between English (en-PH) and Filipino/Tagalog (fil-PH).
-   *  Any live recognition session restarts so the new language applies at once. */
-  function toggleSttLang() {
-    const next: SttLang = sttLangRef.current === "fil-PH" ? "en-PH" : "fil-PH"
-    setSttLang(next)
-    sttLangRef.current = next
-    try {
-      localStorage.setItem("chatbot-stt-lang", next)
-    } catch {
-      // ignore
-    }
-    // Abort the current session (the discard flag blocks its partial
-    // transcript from being sent), then listen again in the new language.
-    if (scorpiOpenRef.current && mediaRecorderRef.current) {
-      discardTranscriptRef.current = true
-      abortVoiceSession()
-      window.setTimeout(() => {
-        discardTranscriptRef.current = false
-        startListening()
-      }, 300)
-    }
-  }
-
   /** Upload the recorded clip to our Groq Whisper proxy, then send it. */
   async function transcribeAndSend(blob: Blob, isMp4: boolean) {
     setTranscribing(true)
@@ -955,13 +991,16 @@ export function ChatBot() {
     try {
       const fd = new FormData()
       fd.append("audio", blob, isMp4 ? "speech.mp4" : "speech.webm")
-      // Whisper understands Tagalog ("tl") and English natively — the same
-      // EN/FIL toggle that used to pick the recognizer language now picks
-      // the transcription language.
-      fd.append("language", sttLangRef.current.startsWith("fil") ? "tl" : "en")
+      // No language hint — Whisper auto-detects every clip, so Tagalog,
+      // English and Taglish all transcribe correctly without a toggle.
       const res = await fetch("/api/transcribe", { method: "POST", body: fd })
-      const data = (await res.json()) as { text?: string }
+      const data = (await res.json()) as { text?: string; language?: string }
       const text = (data.text ?? "").trim()
+      // Remember what language Whisper heard so the listening prompt and
+      // the browser-TTS fallback voice adapt automatically.
+      const lang: DetectedLang = data.language === "tl" ? "tl" : "en"
+      setDetectedLang(lang)
+      detectedLangRef.current = lang
       if (!scorpiOpenRef.current) return
       if (!text) {
         // Nothing intelligible in the clip — keep listening.
@@ -1204,12 +1243,12 @@ export function ChatBot() {
           : findAnswer(trimmed)
       setMessages((prev) => [...prev, { from: "bot", text: replyText }])
       setAiReplyText(replyText)
-      if (ttsEnabled) void speakReply(replyText, sttLangRef.current)
+      if (ttsEnabled) void speakReply(replyText, detectedLangRef.current)
     } catch {
       const fallbackReply = findAnswer(trimmed)
       setMessages((prev) => [...prev, { from: "bot", text: fallbackReply }])
       setAiReplyText(fallbackReply)
-      if (ttsEnabled) void speakReply(fallbackReply, sttLangRef.current)
+      if (ttsEnabled) void speakReply(fallbackReply, detectedLangRef.current)
     } finally {
       setTyping(false)
       // SCORPI mode: after the bot answers, go straight back to listening —
@@ -1488,36 +1527,6 @@ export function ChatBot() {
               <FaTimes />
             </button>
 
-            {/* Voice-language toggle — EN vs FIL. The Web Speech API only
-                recognizes the language it was set to, so Tagalog speech
-                needs fil-PH and English needs en-PH. */}
-            <button
-              type="button"
-              onClick={toggleSttLang}
-              aria-label={
-                sttLang === "fil-PH"
-                  ? "Voice language: Filipino — tap to switch to English"
-                  : "Voice language: English — tap to switch to Filipino"
-              }
-              title={
-                sttLang === "fil-PH"
-                  ? "Kinikilala: FILIPINO (Tagalog) — pindutin para sa English"
-                  : "Listening in ENGLISH — pindutin para sa Filipino (Tagalog)"
-              }
-              className="flex h-11 items-center justify-center rounded-full px-4 text-xs font-bold text-white transition-transform hover:scale-110"
-              style={{
-                position: "absolute",
-                top: "1.25rem",
-                left: "1.25rem",
-                background: "rgba(255,255,255,0.08)",
-                border: `1px solid ${sttLang === "fil-PH" ? "rgba(251,191,36,0.7)" : "rgba(255,255,255,0.25)"}`,
-                color: sttLang === "fil-PH" ? "#fbbf24" : "#ffffff",
-                zIndex: 2,
-              }}
-            >
-              {sttLang === "fil-PH" ? "🇵🇭 FIL" : "EN"}
-            </button>
-
             <div className="relative z-[1] flex w-full max-w-md flex-col items-center text-center">
               <div
                 className="text-xs font-semibold uppercase"
@@ -1733,10 +1742,10 @@ export function ChatBot() {
                         )}
                         {scorpiText ||
                           (listening
-                            ? sttLang === "fil-PH"
+                            ? detectedLang === "tl"
                               ? "Magsalita na — nakikinig ako..."
                               : "Speak now — I'm listening..."
-                            : sttLang === "fil-PH"
+                            : detectedLang === "tl"
                               ? "Nakikinig ako..."
                               : "I'm listening...")}
                       </p>
