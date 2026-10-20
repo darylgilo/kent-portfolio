@@ -64,6 +64,7 @@ export const PLAYGROUND_MODULES: Module[] = [
   { id: "sql", label: "SQL", description: "Queries with sample tables and results.", category: "database" },
   { id: "postgres", label: "PostgreSQL", description: "JSONB, arrays, CTEs, full-text search, and psql.", category: "database" },
   { id: "github", label: "Git & GitHub", description: "Commands with example terminal output.", category: "devops" },
+  { id: "express", label: "Express.js", description: "Backend API with routes, middleware, and JSON responses.", category: "backend" },
 ]
 
 /** Modules belonging to one header group, in tab order. */
@@ -3775,40 +3776,83 @@ export const PLAYGROUND_LESSONS_PART30: Lesson[] = [
     expectedOutput: "2 rows — ranked by relevance.",
   },
 ];
-export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
-  ...PLAYGROUND_LESSONS,
-  ...PLAYGROUND_LESSONS_PART2,
-  ...PLAYGROUND_LESSONS_PART3,
-  ...PLAYGROUND_LESSONS_PART4,
-  ...PLAYGROUND_LESSONS_PART5,
-  ...PLAYGROUND_LESSONS_PART6,
-  ...PLAYGROUND_LESSONS_PART7,
-  ...PLAYGROUND_LESSONS_PART8,
-  ...PLAYGROUND_LESSONS_PART9,
-  ...PLAYGROUND_LESSONS_PART10,
-  ...PLAYGROUND_LESSONS_PART11,
-  ...PLAYGROUND_LESSONS_PART12,
-  ...PLAYGROUND_LESSONS_PART13,
-  ...PLAYGROUND_LESSONS_PART14,
-  ...PLAYGROUND_LESSONS_PART15,
-  ...PLAYGROUND_LESSONS_PART16,
-  ...PLAYGROUND_LESSONS_PART17,
-  ...PLAYGROUND_LESSONS_PART18,
-  ...PLAYGROUND_LESSONS_PART19,
-  ...PLAYGROUND_LESSONS_PART20,
-  ...PLAYGROUND_LESSONS_PART21,
-  ...PLAYGROUND_LESSONS_PART22,
-  ...PLAYGROUND_LESSONS_PART23,
-  ...PLAYGROUND_LESSONS_PART24,
-  ...PLAYGROUND_LESSONS_PART25,
-  ...PLAYGROUND_LESSONS_PART26,
-  ...PLAYGROUND_LESSONS_PART27,
-  ...PLAYGROUND_LESSONS_PART28,
-  ...PLAYGROUND_LESSONS_PART29,
-  ...PLAYGROUND_LESSONS_PART30,
-].map((lesson) =>
-  LESSON_SECTIONS[lesson.id] ? { ...lesson, sections: LESSON_SECTIONS[lesson.id] } : lesson
-)
+export const PLAYGROUND_LESSONS_PART31: Lesson[] = [
+  {
+    id: "express-basics",
+    moduleId: "express",
+    group: "Getting Started",
+    title: "Express.js Fundamentals",
+    description: "Create a basic Express server that listens on a port.",
+    explanation:
+      "Express is a minimal Node.js web framework. You create an app with express(), define routes, and start listening with app.listen(). This lesson shows the skeleton of an Express app — study it, then run it locally with node.",
+    code: "const express = require('express');\nconst app = express();\nconst PORT = 3000;\n\napp.get('/', (req, res) => {\n  res.send('Hello from Express!');\n});\n\napp.listen(PORT, () => {\n  console.log(`Server running at http://localhost:${PORT}`);\n});",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["express", "server", "listen"],
+    expectedOutput: "Terminal: Server running at http://localhost:3000\nBrowser GET / -> Hello from Express!",
+  },
+  {
+    id: "express-routing",
+    moduleId: "express",
+    group: "Routing",
+    title: "Routing & Route Parameters",
+    description: "Handle GET and POST requests with dynamic route parameters.",
+    explanation:
+      "Express routes match HTTP methods and paths. Route parameters like :id capture URL segments and are available in req.params. Use res.json() to send JSON and res.send() for text/html.",
+    code: "const express = require('express');\nconst app = express();\n\napp.get('/about', (req, res) => {\n  res.send('About page');\n});\n\napp.get('/users/:id', (req, res) => {\n  res.json({ userId: req.params.id });\n});\n\napp.post('/users', express.json(), (req, res) => {\n  const newUser = req.body;\n  res.status(201).json({ message: 'User created', user: newUser });\n});\n\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["routing", "get", "post", "params", "json"],
+    expectedOutput: "GET /about -> About page\nGET /users/42 -> {\"userId\":\"42\"}\nPOST /users -> {\"message\":\"User created\",\"user\":{...}}",
+  },
+  {
+    id: "express-middleware",
+    moduleId: "express",
+    group: "Middleware",
+    title: "Middleware",
+    description: "Run code between request and response with middleware functions.",
+    explanation:
+      "Middleware functions have access to req, res, and next. They can modify the request/response, end the cycle, or pass control to the next middleware with next(). Built-in middleware like express.json() parses incoming JSON bodies.",
+    code: "const express = require('express');\nconst app = express();\n\napp.use(express.json());\n\napp.use((req, res, next) => {\n  console.log(`${req.method} ${req.url} - ${new Date().toISOString()}`);\n  next();\n});\n\napp.get('/hello', (req, res) => {\n  res.send('Hello!');\n});\n\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["middleware", "express.json", "next", "logging"],
+    expectedOutput: "Terminal logs each request: GET /hello - 2024-...\nBrowser GET /hello -> Hello!",
+  },
+  {
+    id: "express-error-handling",
+    moduleId: "express",
+    group: "Error Handling",
+    title: "Error Handling",
+    description: "Catch and respond to errors with a centralized error handler.",
+    explanation:
+      "Express error-handling middleware takes four arguments: (err, req, res, next). Define it after all routes. Use it to send consistent error responses instead of crashing the server.",
+    code: "const express = require('express');\nconst app = express();\n\napp.use(express.json());\n\napp.get('/divide/:a/:b', (req, res, next) => {\n  const a = Number(req.params.a);\n  const b = Number(req.params.b);\n  if (b === 0) {\n    const err = new Error('Division by zero');\n    err.status = 400;\n    return next(err);\n  }\n  res.json({ result: a / b });\n});\n\napp.use((err, req, res, next) => {\n  const status = err.status || 500;\n  res.status(status).json({ error: err.message || 'Internal Server Error' });\n});\n\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["error-handling", "try-catch", "status codes", "json"],
+    expectedOutput: "GET /divide/10/2 -> {\"result\":5}\nGET /divide/10/0 -> 400 {\"error\":\"Division by zero\"}",
+  },
+  {
+    id: "express-static-files",
+    moduleId: "express",
+    group: "Static Files",
+    title: "Serving Static Files",
+    description: "Serve HTML, CSS, and images with express.static.",
+    explanation:
+      "express.static serves static assets from a folder. Place your frontend files in public/ and Express will serve them at the root URL. Combine with route handlers for a full-stack API + frontend setup.",
+    code: "const express = require('express');\nconst path = require('path');\nconst app = express();\n\napp.use(express.static(path.join(__dirname, 'public')));\n\napp.get('/api/time', (req, res) => {\n  res.json({ time: new Date().toISOString() });\n});\n\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["static", "express.static", "frontend", "api"],
+    expectedOutput: "Browser GET / -> serves public/index.html\nGET /api/time -> {\"time\":\"2024-...\"}",
+  },
+];
 
 // Lesson order follows the spec's Learning Modules list (section 4) for each module.
 // Titles not listed here (extra lessons) stay at the end in their original order.
@@ -3885,7 +3929,149 @@ const LESSON_ORDER: Record<string, string[]> = {
     "Clone and .gitignore", "Remotes, Push, Pull", "Branches and Merge",
     "Pull Requests", "GitHub Workflow",
   ],
+  express: [
+    "Express.js Fundamentals", "Routing & Route Parameters", "Middleware",
+    "Error Handling", "Serving Static Files", "REST API CRUD", "express.Router",
+    "Database Integration", "JWT Authentication", "File Uploads with Multer",
+    "CORS",
+  ],
 }
+export const PLAYGROUND_LESSONS_PART32: Lesson[] = [
+  {
+    id: "express-rest-crud",
+    moduleId: "express",
+    group: "REST API",
+    title: "REST API CRUD",
+    description: "Build full CRUD endpoints for a resource.",
+    explanation:
+      "A REST resource uses standard HTTP methods: GET (list/read), POST (create), PUT/PATCH (update), DELETE (remove). Use an in-memory array as a fake database to practice the full cycle.",
+    code: "const express = require('express');\nconst app = express();\napp.use(express.json());\n\nlet posts = [];\nlet id = 1;\n\napp.get('/posts', (req, res) => res.json(posts));\napp.get('/posts/:id', (req, res) => {\n  const p = posts.find(x => x.id === Number(req.params.id));\n  p ? res.json(p) : res.status(404).json({ error: 'Not found' });\n});\napp.post('/posts', (req, res) => {\n  const p = { id: id++, ...req.body };\n  posts.push(p);\n  res.status(201).json(p);\n});\napp.put('/posts/:id', (req, res) => {\n  const idx = posts.findIndex(x => x.id === Number(req.params.id));\n  if (idx === -1) return res.status(404).json({ error: 'Not found' });\n  posts[idx] = { ...posts[idx], ...req.body };\n  res.json(posts[idx]);\n});\napp.delete('/posts/:id', (req, res) => {\n  posts = posts.filter(x => x.id !== Number(req.params.id));\n  res.status(204).send();\n});\n\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["crud", "rest", "http-methods", "status-codes"],
+    expectedOutput: "GET /posts -> []\nPOST /posts -> 201 {id:1,...}\nGET /posts/1 -> {id:1,...}\nPUT /posts/1 -> 200 {id:1,...updated}\nDELETE /posts/1 -> 204",
+  },
+  {
+    id: "express-router",
+    moduleId: "express",
+    group: "Routing",
+    title: "express.Router",
+    description: "Split routes into modular routers.",
+    explanation:
+      "express.Router() creates a mountable route handler. Move related routes into separate files (e.g., routes/users.js) and mount them with app.use('/users', usersRouter). Keeps your app organized as it grows.",
+    code: "const express = require('express');\nconst app = express();\n\nconst usersRouter = express.Router();\nusersRouter.get('/', (req, res) => res.json([{ id: 1, name: 'Kent' }]));\nusersRouter.get('/:id', (req, res) => res.json({ id: req.params.id }));\n\napp.use('/users', usersRouter);\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["router", "modular", "mount", "organization"],
+    expectedOutput: "GET /users -> [{id:1,name:'Kent'}]\nGET /users/42 -> {id:'42'}",
+  },
+  {
+    id: "express-database",
+    moduleId: "express",
+    group: "Database",
+    title: "Database Integration",
+    description: "Connect Express to a database and query data.",
+    explanation:
+      "Use a database client (e.g., pg for Postgres, mongoose for MongoDB) to connect and run queries. Always handle connection errors and close the client when the app shuts down.",
+    code: "const express = require('express');\nconst { Pool } = require('pg');\nconst app = express();\napp.use(express.json());\n\nconst pool = new Pool({ connectionString: process.env.DATABASE_URL });\n\napp.get('/users', async (req, res) => {\n  const { rows } = await pool.query('SELECT * FROM users');\n  res.json(rows);\n});\n\napp.listen(3000, () => console.log('Server + DB ready'));\nprocess.on('SIGINT', () => pool.end());",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["postgres", "pg", "pool", "async-await", "connection"],
+    expectedOutput: "GET /users -> [{id:1,name:'Kent'},...]",
+  },
+];
+export const PLAYGROUND_LESSONS_PART33: Lesson[] = [
+  {
+    id: "express-jwt-auth",
+    moduleId: "express",
+    group: "Authentication",
+    title: "JWT Authentication",
+    description: "Issue and verify JSON Web Tokens for protected routes.",
+    explanation:
+      "JWT lets you statelessly authenticate users. Sign a token on login with jwt.sign(), send it to the client, and verify it on protected routes with jwt.verify() middleware.",
+    code: "const express = require('express');\nconst jwt = require('jsonwebtoken');\nconst app = express();\napp.use(express.json());\n\nconst SECRET = 'your-secret';\n\napp.post('/login', (req, res) => {\n  const token = jwt.sign({ user: req.body.username }, SECRET, { expiresIn: '1h' });\n  res.json({ token });\n});\n\nfunction auth(req, res, next) {\n  const token = req.headers.authorization?.split(' ')[1];\n  if (!token) return res.status(401).json({ error: 'Missing token' });\n  try { req.user = jwt.verify(token, SECRET); next(); }\n  catch { res.status(403).json({ error: 'Invalid token' }); }\n}\n\napp.get('/protected', auth, (req, res) => res.json({ hello: req.user.user }));\n\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["jwt", "jsonwebtoken", "auth", "middleware", "protected-routes"],
+    expectedOutput: "POST /login -> {token: 'eyJ...'}\nGET /protected (no token) -> 401 {error:'Missing token'}\nGET /protected (valid token) -> {hello:'Kent'}",
+  },
+  {
+    id: "express-file-uploads",
+    moduleId: "express",
+    group: "File Uploads",
+    title: "File Uploads with Multer",
+    description: "Handle multipart file uploads with multer middleware.",
+    explanation:
+      "multer parses multipart/form-data. Configure storage (destination + filename), then use upload.single('field') or upload.array('field') on your route. Access files via req.file / req.files.",
+    code: "const express = require('express');\nconst multer = require('multer');\nconst path = require('path');\nconst app = express();\n\nconst storage = multer.diskStorage({\n  destination: 'uploads/',\n  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),\n});\nconst upload = multer({ storage });\n\napp.post('/avatar', upload.single('avatar'), (req, res) => {\n  res.json({ file: req.file.filename, size: req.file.size });\n});\n\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["multer", "multipart", "file-upload", "diskstorage"],
+    expectedOutput: "POST /avatar -> {file:'1712345678.jpg',size:20480}",
+  },
+  {
+    id: "express-cors",
+    moduleId: "express",
+    group: "Security",
+    title: "CORS",
+    description: "Configure Cross-Origin Resource Sharing for browser APIs.",
+    explanation:
+      "Browsers block cross-origin requests by default. Use the cors middleware to allow specific origins, methods, and headers so your frontend (on a different domain) can call your API.",
+    code: "const express = require('express');\nconst cors = require('cors');\nconst app = express();\n\napp.use(cors({ origin: 'https://myfrontend.com' }));\n\napp.get('/api/data', (req, res) => res.json({ message: 'Hello from API' }));\n\napp.listen(3000);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["cors", "cross-origin", "headers", "browser-security"],
+    expectedOutput: "GET /api/data -> {message:'Hello from API'} (allowed origin only)",
+  },
+];
+
+export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
+  ...PLAYGROUND_LESSONS,
+  ...PLAYGROUND_LESSONS_PART2,
+  ...PLAYGROUND_LESSONS_PART3,
+  ...PLAYGROUND_LESSONS_PART4,
+  ...PLAYGROUND_LESSONS_PART5,
+  ...PLAYGROUND_LESSONS_PART6,
+  ...PLAYGROUND_LESSONS_PART7,
+  ...PLAYGROUND_LESSONS_PART8,
+  ...PLAYGROUND_LESSONS_PART9,
+  ...PLAYGROUND_LESSONS_PART10,
+  ...PLAYGROUND_LESSONS_PART11,
+  ...PLAYGROUND_LESSONS_PART12,
+  ...PLAYGROUND_LESSONS_PART13,
+  ...PLAYGROUND_LESSONS_PART14,
+  ...PLAYGROUND_LESSONS_PART15,
+  ...PLAYGROUND_LESSONS_PART16,
+  ...PLAYGROUND_LESSONS_PART17,
+  ...PLAYGROUND_LESSONS_PART18,
+  ...PLAYGROUND_LESSONS_PART19,
+  ...PLAYGROUND_LESSONS_PART20,
+  ...PLAYGROUND_LESSONS_PART21,
+  ...PLAYGROUND_LESSONS_PART22,
+  ...PLAYGROUND_LESSONS_PART23,
+  ...PLAYGROUND_LESSONS_PART24,
+  ...PLAYGROUND_LESSONS_PART25,
+  ...PLAYGROUND_LESSONS_PART26,
+  ...PLAYGROUND_LESSONS_PART27,
+  ...PLAYGROUND_LESSONS_PART28,
+  ...PLAYGROUND_LESSONS_PART29,
+  ...PLAYGROUND_LESSONS_PART30,
+  ...PLAYGROUND_LESSONS_PART31,
+  ...PLAYGROUND_LESSONS_PART32,
+  ...PLAYGROUND_LESSONS_PART33,
+].map((lesson) =>
+  LESSON_SECTIONS[lesson.id] ? { ...lesson, sections: LESSON_SECTIONS[lesson.id] } : lesson
+)
+
+
+
+
 
 export function lessonsForModule(moduleId: string): Lesson[] {
   const lessons = ALL_PLAYGROUND_LESSONS.filter((l) => l.moduleId === moduleId)
