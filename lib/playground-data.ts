@@ -3199,6 +3199,54 @@ const LESSON_SECTIONS: Record<string, { title: string; content: string }[]> = {
     { title: "Ranking", content: "ts_rank(search, query) orders by relevance — title matches should weigh more via setweight('A') vs setweight('D'). Rank THEN limit, not the reverse." },
     { title: "GIN speed", content: "CREATE INDEX ... USING GIN (search) makes full-text instant on big tables; precompute the tsvector in a STORED generated column so writes stay consistent." },
   ],
+  "axios-basics": [
+    { title: "Request as a promise", content: "axios.get(url) returns a promise — await it or chain .then/.catch. The promise resolves to the full response object, never the bare body, so you always have status and data together." },
+    { title: "The response object", content: "res.status is the HTTP code, res.statusText its label, res.data the parsed JSON body, res.config the config that produced the request (great for debugging), and res.headers the response headers." },
+    { title: "Automatic JSON", content: "Post an object (axios.post(url, obj)) and axios serializes it to JSON and sets Content-Type for you. Incoming JSON is parsed into res.data automatically — raw fetch would need res.json() yourself." },
+    { title: "Rejects on non-2xx", content: "A 4xx/5xx answer REJECTS the promise instead of resolving, so one .catch covers both broken networks and bad statuses. Only 2xx reaches your success handler." },
+  ],
+  "axios-requests": [
+    { title: "Verb helpers", content: "get/post/put/patch/delete are thin wrappers over axios.request({ method, url, ... }). Reads take (url, config); writes take (url, data, config). Mixing them up just shifts arguments — nothing else changes." },
+    { title: "Bodies and serialization", content: "Pass a plain JS object as the data argument of post/put/patch — axios stringifies it to JSON and sets application/json. Sending FormData or a Blob instead makes axios forward it untouched with the right encoding." },
+    { title: "One catch for both failure kinds", content: "A rejected promise means either the request never completed (offline, DNS, timeout) or the server answered outside 2xx. Distinguish them later via err.response — handle both in one .catch for now." },
+    { title: "async/await vs .then", content: "Both read the same promise. async/await keeps sequential calls linear and lets try/catch wrap the whole function; .then/.catch chains are fine for a single call. Pick one style per function, not both." },
+  ],
+  "axios-crud": [
+    { title: "PUT replaces, PATCH updates", content: "PUT sends a COMPLETE body that becomes the new resource — omit a field and you may wipe it. PATCH sends only the fields that change and leaves the rest alone. Send partial data with PATCH unless your API documents PUT semantics." },
+    { title: "DELETE has no body", content: "axios.delete(url, config) sends no payload. Servers commonly answer 204 No Content, so res.data is empty — the success signal IS the status code, not the body." },
+    { title: "Status codes to expect", content: "200 OK for updates, 201 Created for creates, 204 No Content for deletes. A 404 means the id no longer exists — surface it instead of retrying, and a 409 Conflict means the change clashes with current state." },
+    { title: "Same machinery as GET", content: "Every verb is just request({ method }) under the hood: instance defaults, per-call config, and both interceptor types apply identically. An auth request interceptor protects your writes exactly as it protects reads." },
+  ],
+  "axios-params": [
+    { title: "params builds the query string", content: "Pass { params: { page: 2, q: 'kent gilo' } } and axios encodes each key/value and appends ?page=2&q=kent%20gilo. Never concatenate query strings by hand — encoding bugs (spaces, &, #) hide in exactly that code." },
+    { title: "Path params are your job", content: "An id INSIDE the URL path is not encoded for you — build it with a template literal: api.get(`/users/${id}`). Validate it first if it comes from user input so it cannot smuggle extra path segments." },
+    { title: "res.config.url shows the truth", content: "When a URL looks wrong, log res.config.url (or err.config.url) — it is the exact string that was requested: baseURL + path + query, after params serialization. Debug the URL actually sent, not the one you think you built." },
+    { title: "Combining with baseURL", content: "Instance defaults merge with per-call config, so the instance owns the stable parts (baseURL) and each call supplies only what varies (path segment, params). Swapping environments stays a one-line baseURL change." },
+  ],
+  "axios-config": [
+    { title: "axios.create makes an instance", content: "The instance remembers baseURL, headers, and timeout for every call you make through it — config once, use everywhere. Swapping dev/staging/prod becomes a one-line baseURL change instead of a find-and-replace across requests." },
+    { title: "Defaults vs overrides", content: "Merging is per-key: the instance defaults fill in what a call omits, and the per-call config wins where both define a key. A one-off { timeout: 3000 } on a single request never leaks into the next call." },
+    { title: "Headers carry identity", content: "Authorization: Bearer <token> authenticates the user; Content-Type says how to read the body; custom headers like X-Request-Id enable tracing. Keep tokens out of the source — read them from storage or an env value at call time." },
+    { title: "timeout fails loudly", content: "timeout (ms) aborts a request that hangs too long, rejecting with a timeout error and no err.response. A missing timeout turns one dead server into an app that freezes forever waiting." },
+  ],
+  "axios-async": [
+    { title: "await unwraps the promise", content: "const { status, data } = await api.get(...) reads like synchronous code, and destructuring grabs exactly what you need in one line. A rejected await throws into your catch — no .catch chaining required." },
+    { title: "One try/catch covers all", content: "Every awaited call inside the function funnels failures into the same catch — network failures and non-2xx answers alike. Put request logic in one function and its whole error story in one place." },
+    { title: "finally always runs", content: "Use finally for cleanup that must happen either way: hiding a loading spinner, re-enabling a button, closing a dialog. Do NOT put success-only logic there — it runs on failure too." },
+    { title: "Promise.all for parallelism", content: "Sequential awaits stack their latencies (1s + 1s = 2s); Promise.all fires the requests together and resolves once with every result (~1s total). One rejected member rejects the whole batch — wrap it in the same try/catch." },
+  ],
+  "axios-interceptors": [
+    { title: "Request interceptor", content: "Runs before every request is sent — the single place to attach an auth token, tenant header, or timing log instead of repeating it on each call. Return the (possibly modified) config to let the request continue." },
+    { title: "Response interceptor", content: "Runs on every response before your .then — perfect for central logging, unwrapping a { data } envelope, or normalizing errors into one shape your UI knows how to render." },
+    { title: "Anatomy of an error", content: "err.message explains what happened, err.config is the request that failed, and — when the server answered — err.response carries status, data, and headers. err.response undefined (or status 0 in this preview) means the request never reached a server." },
+    { title: "axios.isAxiosError", content: "Use axios.isAxiosError(err) before trusting err.response or err.config — it confirms the error came from axios rather than from your own code throwing inside a then-handler or interceptor." },
+  ],
+  "axios-error-statuses": [
+    { title: "Only 2xx resolves", content: "axios treats every status outside 200–299 as a rejection, so 3xx redirects are followed for you and 4xx/5xx land in your catch. One error path, not one path per status code." },
+    { title: "HTTP error: the server answered", content: "err.response exists — status tells you the code (404, 500...) and err.response.data usually holds the server's error JSON. Show the user a friendly message from it, and log status + err.config for debugging." },
+    { title: "Network error: nobody answered", content: "Offline, DNS failure, blocked request, or timeout — no HTTP response ever arrived, so err.response is undefined (this preview reports status 0). Retrying makes sense here; a 4xx will never fix itself." },
+    { title: "Status codes worth memorizing", content: "400 bad request (your payload is wrong), 401 unauthenticated (log in), 403 forbidden (not allowed), 404 not found, 409 conflict, 422 validation failed, 429 rate limited (back off), 500/503 server broken." },
+  ],
 }
 
 export const PLAYGROUND_LESSONS_PART29: Lesson[] = [
