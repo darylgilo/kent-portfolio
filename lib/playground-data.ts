@@ -63,6 +63,7 @@ export const PLAYGROUND_MODULES: Module[] = [
   { id: "react", label: "React", description: "Components, props, and state.", category: "library" },
   { id: "axios", label: "Axios", description: "Promise-based HTTP client — requests, instances, interceptors, and error handling.", category: "library" },
   { id: "tailwind", label: "Tailwind", description: "Utility-first styling, compared against raw CSS.", category: "frontend-framework" },
+  { id: "reactnative", label: "React Native", description: "Mobile apps for iOS and Android — native views, StyleSheet, FlatList, navigation.", category: "frontend-framework" },
   { id: "nextjs", label: "Next.js", description: "App Router, routing, and rendering concepts.", category: "fullstack" },
   { id: "laravel", label: "Laravel", description: "Routes, Blade, Eloquent, and Artisan.", category: "fullstack" },
   { id: "nodejs", label: "Node.js", description: "Server-side JavaScript runtime, modules, file system, and events.", category: "runtime" },
@@ -3247,6 +3248,90 @@ const LESSON_SECTIONS: Record<string, { title: string; content: string }[]> = {
     { title: "Network error: nobody answered", content: "Offline, DNS failure, blocked request, or timeout — no HTTP response ever arrived, so err.response is undefined (this preview reports status 0). Retrying makes sense here; a 4xx will never fix itself." },
     { title: "Status codes worth memorizing", content: "400 bad request (your payload is wrong), 401 unauthenticated (log in), 403 forbidden (not allowed), 404 not found, 409 conflict, 422 validation failed, 429 rate limited (back off), 500/503 server broken." },
   ],
+  "reactnative-basics": [
+    { title: "Not a webview", content: "React Native compiles your components into REAL native views — UIView on iOS, android.view on Android. No browser engine is involved, so you get native performance, native scrolling, and native gestures for free." },
+    { title: "The three primitives", content: "View is the only layout container (the div equivalent), Text is the only place text can live (even a lone string needs it), and Image shows pictures from a uri or a require() asset. Buttons are Pressable/Button, lists are FlatList — there are no HTML tags." },
+    { title: "All React rules apply", content: "Components, props, useState/useEffect, context, memo, keys — everything from the React module carries over unchanged. Only the host primitives differ: same mental model, different building blocks." },
+  ],
+  "reactnative-styling": [
+    { title: "style prop, not className", content: "Styles are plain JS objects passed to the style prop. StyleSheet.create() compiles them once into native style refs (cheaper than re-creating inline literals every render) and gives you named, autocomplete-friendly styles." },
+    { title: "Merging with arrays", content: "style={[styles.base, styles.active]} merges styles — later entries win. Conditional styles ride along as falsy entries that get skipped: style={[styles.base, isActive && styles.active]}." },
+    { title: "A smaller CSS", content: "Numbers are density-independent points (no px/%/em juggling). There is no cascade, no inheritance, no float, no position: fixed — styles apply exactly where you pass them, and flexbox does all the layout work." },
+  ],
+  "reactnative-flexbox": [
+    { title: "Column by default", content: "flexDirection defaults to column, not row — children stack TOP to bottom. Set flexDirection: 'row' for horizontal rows. justifyContent distributes along the main axis; alignItems positions on the cross axis. Both appear in almost every style block." },
+    { title: "flex: 1 is the app shell", content: "The root view needs flex: 1 to fill the screen (there is no <body>). A child with flex: 1 absorbs all leftover space — that is how a fixed header and footer stay pinned while the middle scrolls." },
+    { title: "Nothing overflows", content: "Views and text shrink to fit their box by default (flexShrink) instead of spilling off-screen, and long text wraps. You rarely need overflow rules because the layout bends before it breaks." },
+    { title: "SafeAreaView", content: "Wraps content with the iOS notch and home-indicator insets automatically. Android has no equivalent view — pad with the StatusBar height or use a cross-platform lib instead." },
+  ],
+  "reactnative-flatlist": [
+    { title: "Virtualization", content: "FlatList renders only the rows near the viewport and recycles the rest — 10,000 items cost about the same as 10 visible ones. A .map() builds every node up front and scrolls like sand on big data." },
+    { title: "The two required props", content: "data (array) plus renderItem ({ item, index }) returning JSX. keyExtractor (or a stable key on each item) must be unique and stable — using the array index breaks re-ordering and animations." },
+    { title: "Wrappers and grids", content: "ListHeaderComponent / ListFooterComponent / ListEmptyComponent frame the list without extra nesting; numColumns={2} turns it into a grid. For pull-to-refresh use RefreshControl on the list." },
+  ],
+  "reactnative-input": [
+    { title: "Pressable over Button", content: "Pressable is the primitive: style can be a function of pressed state, plus onPressIn/onPressOut and long-press handlers. Button is the quick, OS-styled convenience component — fine for prototypes, limited for custom UI." },
+    { title: "Controlled TextInput", content: "value + onChangeText (not onChange!) — the exact controlled-component pattern from the web, just a different event name. onChangeText hands you the new string directly on every keystroke." },
+    { title: "The keyboard problem", content: "The soft keyboard covers bottom-anchored inputs on small screens. Wrap the screen in KeyboardAvoidingView (behavior padding on iOS, height/adjustResize on Android) so the UI lifts above the keyboard." },
+  ],
+  "reactnative-navigation": [
+    { title: "Stack mental model", content: "Screens live in a native stack: navigate('Name') pushes a new screen, goBack() pops it. The OS owns the transitions and the swipe-back gesture on iOS — you never hand-roll screen transitions." },
+    { title: "Params, not query strings", content: "navigation.navigate('Details', { id: 7 }) delivers the payload as route.params on the target screen. Define a ParamList type and every navigate call becomes autocomplete-checked and typo-proof in TypeScript." },
+    { title: "One container", content: "Wrap the whole app in a single NavigationContainer — it owns the theme, linking (deep URLs), and state restoration. Stack, tab, and drawer navigators compose inside it for nested flows." },
+  ],
+  "reactnative-platform": [
+    { title: "Platform.OS and Platform.select", content: "One codebase, small branches: Platform.OS is 'ios' or 'android'; Platform.select({ ios, android, default }) picks a value per platform — perfect for fonts, default padding, or permission wording." },
+    { title: "Platform files", content: "Big differences live in filenames: styles.ios.ts / styles.android.ts, or Component.ios.tsx. Metro automatically resolves the right file for each build target — no runtime if-statements needed." },
+    { title: "Native power via libraries", content: "Camera, notifications, biometrics, file system — install the wrapping library (usually Expo modules) and call its JS API. Writing Java/Kotlin/Swift yourself is the last resort, not the workflow." },
+  ],
+  "reactnative-expo": [
+    { title: "Expo vs bare React Native", content: "Expo manages the native iOS/Android projects for you — modules link automatically and OTA updates ship JS fixes without store review. The bare React Native CLI gives full native control but owns all that plumbing yourself. Start with Expo unless you already know you need otherwise." },
+    { title: "Expo Go and the QR code", content: "npx expo start serves a dev build URL; scanning the QR with Expo Go on a real phone loads the app in seconds and reloads on every save. It is the fastest edit-see loop in mobile — no simulator boot, no cables." },
+    { title: "Adding modules", content: "npx expo install expo-camera installs the SDK-compatible version and wires the native code automatically — no pod install, no rebuild gymnastics. If a library is not in the Expo ecosystem, use a dev client or prebuild." },
+    { title: "When to leave Expo Go", content: "Custom native modules not bundled in Expo Go need a development build (npx expo run:android / run:ios). JS-only iteration stays in Expo Go; native changes require the rebuild." },
+  ],
+  "reactnative-core-components": [
+    { title: "ScrollView vs FlatList", content: "ScrollView lays out and scrolls ALL its children at once — perfect for small fixed screens (settings, forms), wrong for long or dynamic data because every row is rendered up front. Data lists belong to FlatList's virtualization." },
+    { title: "Switch is controlled", content: "value + onValueChange — the same controlled pattern as every other input in React and RN. Store the boolean in state and let the switch read from it; never treat it as a self-managing widget." },
+    { title: "Modal", content: "A full-screen overlay above the current screen: animationType slide/fade, visible to show/hide, and onRequestClose to honor the Android hardware back button — Google Play reviews it as a policy requirement, not a nicety." },
+    { title: "ActivityIndicator", content: "The native spinner. Pair it with a loading state while data loads — never block the whole screen with it when a skeleton or inline spinner inside the affected area will do." },
+  ],
+  "reactnative-forms": [
+    { title: "Controlled everything", content: "A form is just state plus inputs: each field has a value and a setter wired through value/onChangeText. The submit handler reads the whole state object at once — there is no form library magic underneath." },
+    { title: "Validate on submit", content: "Validate once when the user submits, then re-validate fields as they fix them. Validating on every keystroke punishes half-typed input with premature errors (user types 'k', gets 'invalid email'). Use onBlur for early single-field checks." },
+    { title: "Inline errors beat modals", content: "Render the error message directly under its field in red — the user sees exactly what to fix without dismissing anything. Disable the submit button while submitting to prevent double posts." },
+    { title: "Scaling up", content: "For bigger forms, react-hook-form + a zod schema keeps one source of truth: the same schema validates on the client AND on the server (or pairs with your API's validation), and re-renders stay minimal." },
+  ],
+  "reactnative-state": [
+    { title: "Local vs shared", content: "useState inside a screen covers screen-local UI state. Anything another screen or the navigation bar needs must be lifted up — or the screens unmount and take that state with them." },
+    { title: "The Context pattern", content: "Provider component holding the state + a useCount()-style custom hook that reads it = zero prop drilling across deep trees. Same pattern as web React — React Native adds nothing new here." },
+    { title: "Screens unmount", content: "Navigating away destroys the screen component by default, so state stored only there evaporates. Critical data (auth, cart, drafts) belongs in a store or context ABOVE the navigator, or in storage." },
+    { title: "Pick the right tool", content: "Context for low-frequency values (theme, auth), Zustand for small global stores with zero boilerplate, Redux Toolkit for large teams and devtool needs, TanStack Query for server state (cache, refetch, dedupe)." },
+  ],
+  "reactnative-networking": [
+    { title: "fetch and axios carry over", content: "React Native ships fetch, and every lesson from the Axios module applies unchanged — same promises, same interceptors, same error shape. Mobile code is web networking code." },
+    { title: "https or nothing", content: "Android blocks cleartext http by default (iOS App Transport Security too). Point apps at https endpoints; talking to a local dev API needs explicit exceptions (Android uses 10.0.2.2 to reach the host machine, real devices use your LAN IP)." },
+    { title: "Failures are usually offline", content: "On mobile, most failed requests are dropped connections, not broken servers. Retry transient calls with backoff, surface a friendly offline state, and queue writes (mutation retries or a background sync) instead of losing them." },
+    { title: "Refresh on focus", content: "Screens remount when you navigate back, but data cached in a store can be stale. Refetch on focus (useFocusEffect) or let TanStack Query handle refetching so users never stare at yesterday's list." },
+  ],
+  "reactnative-storage": [
+    { title: "AsyncStorage basics", content: "AsyncStorage is React Native's localStorage: async getItem/setItem/removeItem over string keys on device storage. Ideal for tokens, onboarding flags, and UI preferences. The API is promise-based — always await it." },
+    { title: "Secrets go to SecureStore", content: "AsyncStorage is plain unencrypted storage. JWTs, refresh tokens, and any secret belong in expo-secure-store, backed by the iOS Keychain and Android Keystore — the same API shape, real hardware encryption." },
+    { title: "Serialize objects", content: "Storage holds strings only: JSON.stringify before setItem, JSON.parse after getItem, wrapped in try/catch because a corrupted cache entry should not crash the app." },
+    { title: "Scope and lifetime", content: "The app sandbox is wiped on uninstall and cleared by the OS under storage pressure. Treat it as a cache or session layer — anything the user cannot afford to lose also lives on the server." },
+  ],
+  "reactnative-animations": [
+    { title: "Animate values, not state", content: "Drive motion with an Animated.Value held in a ref — calling setState 60 times a second re-renders the tree and drops frames. State decides WHAT is shown; the animated value handles HOW it appears." },
+    { title: "The native driver", content: "useNativeDriver: true hands the timing to the UI thread, so opacity and transform animations run at 60fps regardless of JS workload. Only transform/opacity support it — layout properties still need the JS thread." },
+    { title: "Gestures need Reanimated", content: "Swipe-to-dismiss, drag, and pan belong to react-native-reanimated + react-native-gesture-handler: gesture handlers and animation callbacks run on the UI thread, so they stay smooth where Animated-on-JS would stutter." },
+    { title: "Cheap feedback", content: "Press states need no animation library: Pressable's style prop is a function of { pressed } — scale or dim the button inline. Reach for Animated only when motion is choreographed, not for a 5% press effect." },
+  ],
+  "reactnative-debug": [
+    { title: "The Dev Menu", content: "Shake the device (or Cmd+D / Cmd+M) for the Dev Menu: reload, element inspector, and the perf monitor showing JS/native frame rates. React DevTools plugs into the same bridge for the component tree and profiler." },
+    { title: "Read the redbox", content: "In-app red errors print a stack — the FIRST frame is usually yours and the culprit. Fix the top frame before blaming libraries; enable the error overlay in dev so crashes surface immediately." },
+    { title: "JS change vs native change", content: "JS and styles hot-reload in seconds; new native modules or config plugins require a fresh build (npx expo run:android / run:ios). If something breaks after adding a library, rebuild before debugging blind." },
+    { title: "Ship with EAS", content: "eas build -p android --profile production produces a store-ready artifact in the cloud (icons, splash, signing, versions handled); eas submit uploads it to the Play Store or App Store. Release channels let you stage a rollout." },
+  ],
 }
 
 export const PLAYGROUND_LESSONS_PART29: Lesson[] = [
@@ -3946,6 +4031,14 @@ const LESSON_ORDER: Record<string, string[]> = {
     "Conditional Rendering", "Lists and Keys", "Forms", "useEffect", "useRef",
     "Context", "Custom Hooks", "Data Fetching", "Component Patterns",
   ],
+  reactnative: [
+    "React Native Basics", "Expo Project Setup",
+    "Styling with StyleSheet", "Flexbox Layout Defaults",
+    "Core Components", "Lists with FlatList", "Touch and User Input",
+    "Forms and Validation", "State Management", "Networking", "Storage",
+    "Animations and Gestures",
+    "Navigation", "Platform and Native APIs", "Debugging and Build",
+  ],
   axios: [
     "Axios Basics", "GET and POST Requests", "PUT, PATCH, and DELETE",
     "Query Params and Path Params", "Config and Headers",
@@ -4570,6 +4663,249 @@ export const PLAYGROUND_LESSONS_PART36: Lesson[] = [
   },
 ];
 
+export const PLAYGROUND_LESSONS_PART37: Lesson[] = [
+  {
+    id: "reactnative-basics",
+    moduleId: "reactnative",
+    group: "Getting Started",
+    title: "React Native Basics",
+    description: "Real native apps from the React you already know.",
+    explanation:
+      "React Native builds actual iOS/Android apps from the same React components — no webview involved. HTML tags do not exist here: View is the layout container (the div equivalent), Text is the only place text can live, and Image renders pictures. Components, props, state, and hooks all carry over from React unchanged — only the host primitives differ.",
+    code: "import { View, Text, Image } from 'react-native';\n\nexport default function App() {\n  return (\n    <View style={{ padding: 16 }}>\n      <Text style={{ fontSize: 24 }}>Hello, Kent!</Text>\n      <Text>Ships to both iOS and Android.</Text>\n      <Image\n        source={{ uri: 'https://example.com/logo.png' }}\n        style={{ width: 120, height: 40 }}\n      />\n    </View>\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["react-native", "View", "Text", "Image", "native views"],
+    expectedOutput:
+      "A native screen with a large greeting, a subtitle line, and a logo image stacked vertically inside 16pt padding — rendered with real OS views on both platforms.",
+  },
+  {
+    id: "reactnative-styling",
+    moduleId: "reactnative",
+    group: "Styling",
+    title: "Styling with StyleSheet",
+    description: "JS objects instead of CSS files — no className, no cascade.",
+    explanation:
+      "Styles in React Native are plain JavaScript objects passed to the style prop — there is no className and no stylesheet file. StyleSheet.create() compiles them once into native style refs, which is cheaper than recreating inline literals every render. Merge styles with an array (later entries win), and skip conditional entries by making them falsy. The supported CSS subset is deliberately small: numbers are density-independent points, and flexbox does the layout work.",
+    code: "import { View, Text, StyleSheet } from 'react-native';\n\nexport default function Card({ title }: { title: string }) {\n  return (\n    <View style={styles.card}>\n      <Text style={styles.title}>{title}</Text>\n      <Text style={[styles.meta, styles.muted]}>2 min read</Text>\n    </View>\n  );\n}\n\nconst styles = StyleSheet.create({\n  card: { padding: 16, borderRadius: 12, backgroundColor: '#fff' },\n  title: { fontSize: 18, fontWeight: '700' },\n  meta: { marginTop: 4 },\n  muted: { color: '#888' },\n});",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["StyleSheet", "style prop", "style arrays", "no CSS cascade"],
+    expectedOutput:
+      "A white rounded card with a bold title and a small gray meta line. [styles.meta, styles.muted] merges both objects into one style.",
+  },
+  {
+    id: "reactnative-flexbox",
+    moduleId: "reactnative",
+    group: "Styling",
+    title: "Flexbox Layout Defaults",
+    description: "Column by default, flex: 1 app shells, SafeAreaView.",
+    explanation:
+      "React Native flips two flexbox defaults you know from the web: flexDirection is column (children stack top-to-bottom) instead of row, and elements shrink to fit instead of overflowing off-screen. The root view needs flex: 1 to fill the screen — there is no body — and a child with flex: 1 absorbs all leftover space, which is how fixed headers and footers stay pinned. SafeAreaView adds the iOS notch and home-indicator insets for free.",
+    code: "import { View, Text, SafeAreaView, StyleSheet } from 'react-native';\n\nexport default function Screen() {\n  return (\n    <SafeAreaView style={styles.screen}>\n      <View style={styles.header}>\n        <Text>Header</Text>\n      </View>\n      <View style={styles.content}>\n        <Text>Main content takes all the remaining space</Text>\n      </View>\n      <View style={styles.footer}>\n        <Text>Footer</Text>\n      </View>\n    </SafeAreaView>\n  );\n}\n\nconst styles = StyleSheet.create({\n  screen: { flex: 1 }, // the root view fills the screen\n  header: { height: 56, justifyContent: 'center', paddingHorizontal: 16 },\n  content: { flex: 1, padding: 16 }, // absorbs the leftover space\n  footer: { height: 48, alignItems: 'center', justifyContent: 'center' },\n});",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["flexDirection column", "flex: 1", "SafeAreaView", "justifyContent", "alignItems"],
+    expectedOutput:
+      "A classic app shell: fixed header on top, footer pinned at the bottom, and the content area filling everything in between — all with four style blocks and no positioning hacks.",
+  },
+  {
+    id: "reactnative-flatlist",
+    moduleId: "reactnative",
+    group: "UI Components",
+    title: "Lists with FlatList",
+    description: "Virtualized scrolling for lists of any size.",
+    explanation:
+      "Long lists belong to FlatList, not .map(). FlatList virtualizes: it renders only the rows near the viewport and recycles the rest, so a 10,000-item feed scrolls as smoothly as a 10-item one — a .map() builds every node up front and janks. It needs two props: data and renderItem, which receives { item, index } and returns JSX. keyExtractor (or a stable key on each item) must be unique and stable; array indexes break re-ordering.",
+    code: "import { FlatList, Text, View } from 'react-native';\n\nconst TASKS = [\n  { id: '1', title: 'Set up Expo project' },\n  { id: '2', title: 'Build the home screen' },\n  { id: '3', title: 'Add navigation' },\n];\n\nexport default function TaskList() {\n  return (\n    <FlatList\n      data={TASKS}\n      keyExtractor={(item) => item.id}\n      ListHeaderComponent={<Text style={{ padding: 16, fontWeight: '700' }}>Tasks</Text>}\n      renderItem={({ item }) => (\n        <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' }}>\n          <Text>{item.title}</Text>\n        </View>\n      )}\n    />\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["FlatList", "virtualization", "renderItem", "keyExtractor", "numColumns"],
+    expectedOutput:
+      "A scrolling list titled Tasks with one row per task separated by hairlines. Rows render lazily as they approach the viewport.",
+  },
+  {
+    id: "reactnative-input",
+    moduleId: "reactnative",
+    group: "UI Components",
+    title: "Touch and User Input",
+    description: "Pressable, controlled TextInput, and the keyboard.",
+    explanation:
+      "There is no onclick in React Native — Pressable handles taps with a style function for pressed states plus onPressIn/onPressOut and long-press handlers (Button is the quick OS-styled option). Text entry uses TextInput, a controlled component exactly like the web except the change event is onChangeText, not onChange. The soft keyboard loves covering bottom inputs, so wrap screens in KeyboardAvoidingView to lift the UI above it.",
+    code: "import { useState } from 'react';\nimport { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';\n\nexport default function Composer() {\n  const [message, setMessage] = useState('');\n\n  return (\n    <View style={styles.wrap}>\n      <TextInput\n        style={styles.input}\n        value={message}\n        onChangeText={setMessage}\n        placeholder='Type a message...'\n      />\n      <Pressable style={styles.send} onPress={() => setMessage('')}>\n        <Text style={styles.sendText}>Send</Text>\n      </Pressable>\n    </View>\n  );\n}\n\nconst styles = StyleSheet.create({\n  wrap: { flexDirection: 'row', padding: 8 },\n  input: { flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingHorizontal: 12 },\n  send: { marginLeft: 8, backgroundColor: '#7c5cff', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },\n  sendText: { color: '#fff', fontWeight: '700' },\n});",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["Pressable", "TextInput", "onChangeText", "controlled input", "KeyboardAvoidingView"],
+    expectedOutput:
+      "A chat-style composer: a text field filling the row with a purple Send button beside it. Typing updates state; tapping Send clears the field.",
+  },
+  {
+    id: "reactnative-navigation",
+    moduleId: "reactnative",
+    group: "Navigation",
+    title: "Navigation",
+    description: "Native stacks, screens, and params with react-navigation.",
+    explanation:
+      "A React Native app is one JavaScript root with many native screens. react-navigation's createNativeStackNavigator holds the stack: navigate('Name') pushes a screen, goBack() pops it, and the OS owns the transitions and iOS swipe-back gesture. Screens receive data as route.params instead of query strings — wrap the app in one NavigationContainer and type your ParamList to make every navigate call autocomplete-checked.",
+    code: "import { Button, Text, View } from 'react-native';\nimport { NavigationContainer } from '@react-navigation/native';\nimport { createNativeStackNavigator } from '@react-navigation/native-stack';\n\nconst Stack = createNativeStackNavigator();\n\nfunction Home({ navigation }: any) {\n  return (\n    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>\n      <Button title='Open details' onPress={() => navigation.navigate('Details', { id: 7 })} />\n    </View>\n  );\n}\n\nfunction Details({ route }: any) {\n  return <Text style={{ margin: 16 }}>Showing item {route.params.id}</Text>;\n}\n\nexport default function App() {\n  return (\n    <NavigationContainer>\n      <Stack.Navigator>\n        <Stack.Screen name='Home' component={Home} />\n        <Stack.Screen name='Details' component={Details} />\n      </Stack.Navigator>\n    </NavigationContainer>\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["react-navigation", "NativeStackNavigator", "navigate", "route.params", "stack"],
+    expectedOutput:
+      "A native stack: Home shows a button that pushes Details (item 7); the header back button or the iOS swipe gesture returns to Home.",
+  },
+  {
+    id: "reactnative-platform",
+    moduleId: "reactnative",
+    group: "Native APIs",
+    title: "Platform and Native APIs",
+    description: "Platform.OS, platform files, and native modules.",
+    explanation:
+      "One JavaScript bundle runs on both operating systems. Platform.OS and Platform.select({ ios, android, default }) branch for small differences — fonts, padding, permission wording. Bigger differences move into platform files (styles.ios.ts, Component.android.tsx) that Metro resolves automatically per build target. For deep native features like camera or notifications you install a wrapping library (usually Expo modules) and call its JS API instead of writing Java, Kotlin, or Swift.",
+    code: "import { Platform, Dimensions, Text, View } from 'react-native';\n\nconst { width } = Dimensions.get('window'); // screen width in points\n\nexport default function Info() {\n  const font = Platform.select({ ios: 'Helvetica', android: 'sans-serif', default: 'System' });\n  const gutter = Platform.OS === 'android' ? 12 : 16;\n\n  return (\n    <View style={{ padding: gutter }}>\n      <Text style={{ fontFamily: font }}>Running on {Platform.OS}</Text>\n      <Text>Screen width: {width}pt</Text>\n    </View>\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["Platform.OS", "Platform.select", "Dimensions", "platform files", "native modules"],
+    expectedOutput:
+      "On iOS: 'Running on ios' in Helvetica with 16pt padding. On Android: 'Running on android' in sans-serif with 12pt padding — one codebase, two native results.",
+  },
+  {
+    id: "reactnative-expo",
+    moduleId: "reactnative",
+    group: "Getting Started",
+    title: "Expo Project Setup",
+    description: "Scaffold a project and run it on a real phone in minutes.",
+    explanation:
+      "The fastest way into React Native is Expo: npx create-expo-app scaffolds a complete project, and npx expo start serves it to your phone — install Expo Go, scan the QR code, and the app reloads on every save. Expo manages the native projects for you (no Xcode or Android Studio needed to start) and installs native modules with one command. Reach for the bare React Native CLI only when you need custom native code outside the Expo ecosystem.",
+    code: "# Scaffold a fresh app and start developing\nnpx create-expo-app my-app\ncd my-app\nnpx expo start          # scan the QR with Expo Go on your phone\n\n# Add a native module — no manual linking, no IDE needed\nnpx expo install expo-camera\n\n# Native changes need a dev build instead of Expo Go\nnpx expo run:android\nnpx expo run:ios",
+    language: "bash",
+    previewType: "static",
+    interactive: false,
+    topics: ["Expo", "create-expo-app", "expo start", "Expo Go", "dev build"],
+    expectedOutput:
+      "Terminal flow: a fresh project scaffolded, a dev server with QR code for on-device testing, expo-camera installed, and native dev builds for when modules go beyond Expo Go.",
+  },
+  {
+    id: "reactnative-core-components",
+    moduleId: "reactnative",
+    group: "UI Components",
+    title: "Core Components",
+    description: "ScrollView, Switch, Modal, and ActivityIndicator.",
+    explanation:
+      "Beyond View, Text, and Image, React Native ships the widgets an app actually needs. ScrollView scrolls a small fixed screen's worth of content (it renders everything — use FlatList for long data). Switch is a controlled toggle (value + onValueChange), Modal floats content over the current screen and must handle the Android back button via onRequestClose, and ActivityIndicator is the native spinner for loading states. All of them compose like normal React components.",
+    code: "import { useState } from 'react';\nimport { View, Text, Switch, Modal, ActivityIndicator, ScrollView, Pressable } from 'react-native';\n\nexport default function Widgets() {\n  const [wifi, setWifi] = useState(true);\n  const [showInfo, setShowInfo] = useState(false);\n\n  return (\n    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>\n      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>\n        <Text>Wi-Fi</Text>\n        <Switch value={wifi} onValueChange={setWifi} />\n      </View>\n      <Pressable onPress={() => setShowInfo(true)}>\n        <Text>Open modal</Text>\n      </Pressable>\n      <ActivityIndicator size='large' color='#7c5cff' />\n      <Modal visible={showInfo} animationType='slide' onRequestClose={() => setShowInfo(false)}>\n        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>\n          <Text>Inside the modal</Text>\n          <Pressable onPress={() => setShowInfo(false)}>\n            <Text>Close</Text>\n          </Pressable>\n        </View>\n      </Modal>\n    </ScrollView>\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["ScrollView", "Switch", "Modal", "ActivityIndicator", "onRequestClose"],
+    expectedOutput:
+      "A widget playground: a working Wi-Fi toggle, a button that slides up a Modal (the Android back button closes it), and a native spinner — all inside a scrollable view.",
+  },
+  {
+    id: "reactnative-forms",
+    moduleId: "reactnative",
+    group: "Data and Forms",
+    title: "Forms and Validation",
+    description: "Controlled fields, inline errors, and validation flow.",
+    explanation:
+      "Forms in React Native are the controlled-component pattern you already know: every field is state wired through value and onChangeText, and the submit handler reads the whole state at once. Validate on submit (not on every keystroke — it punishes half-typed input), render each error directly under its field, and disable the button while submitting to prevent double posts. For larger forms, react-hook-form plus a zod schema keeps one source of truth shared with your API.",
+    code: "import { useState } from 'react';\nimport { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';\n\nexport default function SignupForm() {\n  const [email, setEmail] = useState('');\n  const [password, setPassword] = useState('');\n  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});\n\n  function submit() {\n    const next: typeof errors = {};\n    if (!email.includes('@')) next.email = 'Enter a valid email';\n    if (password.length < 8) next.password = 'Min 8 characters';\n    setErrors(next);\n    if (Object.keys(next).length === 0) {\n      // valid — send { email, password } to the API\n    }\n  }\n\n  return (\n    <View style={styles.form}>\n      <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder='Email' autoCapitalize='none' />\n      {errors.email && <Text style={styles.error}>{errors.email}</Text>}\n      <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder='Password' secureTextEntry />\n      {errors.password && <Text style={styles.error}>{errors.password}</Text>}\n      <Pressable style={styles.button} onPress={submit}>\n        <Text style={styles.buttonText}>Sign up</Text>\n      </Pressable>\n    </View>\n  );\n}\n\nconst styles = StyleSheet.create({\n  form: { padding: 16, gap: 8 },\n  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12 },\n  error: { color: '#d00' },\n  button: { backgroundColor: '#7c5cff', borderRadius: 8, padding: 14, alignItems: 'center' },\n  buttonText: { color: '#fff', fontWeight: '700' },\n});",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["controlled inputs", "validation", "inline errors", "secureTextEntry", "react-hook-form"],
+    expectedOutput:
+      "A signup form: tapping Sign up with a bad email or short password shows red inline errors under the fields and sends nothing; valid input submits cleanly.",
+  },
+  {
+    id: "reactnative-state",
+    moduleId: "reactnative",
+    group: "Data and Forms",
+    title: "State Management",
+    description: "Context, stores, and where state survives navigation.",
+    explanation:
+      "Local UI state stays in the component with useState; shared state lifts up or moves into Context — identical to web React. The React Native wrinkle is navigation: screens unmount when you navigate away, so state kept only inside them evaporates — critical data (auth, cart, drafts) belongs in a store or context above the navigator, or in on-device storage. For bigger apps, Zustand gives a tiny global store with no boilerplate, Redux Toolkit suits large teams, and TanStack Query handles server state.",
+    code: "import { createContext, useContext, useState } from 'react';\nimport { Text, Pressable } from 'react-native';\n\nconst CountContext = createContext<{ count: number; bump: () => void }>({\n  count: 0,\n  bump: () => {},\n});\n\nexport function CountProvider({ children }: { children: React.ReactNode }) {\n  const [count, setCount] = useState(0);\n  return (\n    <CountContext.Provider value={{ count, bump: () => setCount((c) => c + 1) }}>\n      {children}\n    </CountContext.Provider>\n  );\n}\n\nexport function useCount() {\n  return useContext(CountContext);\n}\n\n// Any screen inside the provider can read it — no prop threading:\nfunction CounterScreen() {\n  const { count, bump } = useCount();\n  return (\n    <Pressable onPress={bump}>\n      <Text>Tapped {count} times</Text>\n    </Pressable>\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["Context", "custom hooks", "Zustand", "prop drilling", "TanStack Query"],
+    expectedOutput:
+      "Every screen wrapped in CountProvider shows the same counter — tapping anywhere bumps it for all of them, with zero prop threading.",
+  },
+  {
+    id: "reactnative-networking",
+    moduleId: "reactnative",
+    group: "Data and Forms",
+    title: "Networking",
+    description: "fetch/axios on mobile, https rules, and offline behavior.",
+    explanation:
+      "React Native ships fetch, so every lesson from the Axios module applies unchanged — same promises, interceptors, and error shapes. Mobile adds a few realities: Android and iOS block cleartext http by default (use https; emulators reach your machine's localhost as 10.0.2.2), most failed requests are dropped connections rather than broken servers, and screens that refetch on focus keep data fresh when users navigate back.",
+    code: "import { useEffect, useState } from 'react';\nimport { View, Text, FlatList } from 'react-native';\n\ntype User = { id: string; name: string };\n\nexport default function UserList() {\n  const [users, setUsers] = useState<User[]>([]);\n  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');\n\n  useEffect(() => {\n    fetch('https://jsonplaceholder.typicode.com/users')\n      .then((res) => {\n        if (!res.ok) throw new Error('HTTP ' + res.status);\n        return res.json();\n      })\n      .then((data: User[]) => {\n        setUsers(data);\n        setStatus('ready');\n      })\n      .catch(() => setStatus('error'));\n  }, []);\n\n  if (status === 'loading') return <Text>Loading...</Text>;\n  if (status === 'error') return <Text>Could not load users.</Text>;\n\n  return (\n    <FlatList\n      data={users}\n      keyExtractor={(u) => u.id}\n      renderItem={({ item }) => <Text style={{ padding: 12 }}>{item.name}</Text>}\n    />\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["fetch", "https only", "offline", "10.0.2.2", "useFocusEffect"],
+    expectedOutput:
+      "On launch the screen shows Loading..., then the user list from the API — or a friendly error line if the request fails. The same code with axios behaves identically.",
+  },
+  {
+    id: "reactnative-storage",
+    moduleId: "reactnative",
+    group: "Data and Forms",
+    title: "Storage",
+    description: "AsyncStorage, SecureStore, and what survives a reinstall.",
+    explanation:
+      "AsyncStorage is React Native's localStorage — async key/value strings on device storage, perfect for tokens, onboarding flags, and preferences. Secrets never go there: expo-secure-store wraps the iOS Keychain and Android Keystore for anything sensitive. Storage holds strings only, so JSON.stringify before you save and JSON.parse (inside try/catch) when you read. Remember the lifetime: the app sandbox is wiped on uninstall, so treat it as cache or session data, never as the only copy of user content.",
+    code: "import { useEffect, useState } from 'react';\nimport AsyncStorage from '@react-native-async-storage/async-storage';\nimport { Text, Pressable } from 'react-native';\n\nexport default function OnboardedFlag() {\n  const [seen, setSeen] = useState<boolean | null>(null);\n\n  useEffect(() => {\n    AsyncStorage.getItem('onboarded').then((v) => setSeen(v === 'true'));\n  }, []);\n\n  async function finish() {\n    await AsyncStorage.setItem('onboarded', 'true');\n    setSeen(true);\n  }\n\n  if (seen === null) return <Text>Loading...</Text>;\n  if (seen) return <Text>Welcome back!</Text>;\n  return (\n    <Pressable onPress={finish}>\n      <Text>Finish onboarding</Text>\n    </Pressable>\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["AsyncStorage", "SecureStore", "JSON.stringify", "tokens", "persistence"],
+    expectedOutput:
+      "First launch shows the onboarding button; tapping it saves the flag and shows Welcome back. Relaunch the app — the flag survives because AsyncStorage persists on the device.",
+  },
+  {
+    id: "reactnative-animations",
+    moduleId: "reactnative",
+    group: "Motion",
+    title: "Animations and Gestures",
+    description: "Animated with the native driver, plus Reanimated gestures.",
+    explanation:
+      "Animate values, not state: an Animated.Value held in a ref drives opacity and transform through Animated.timing, and useNativeDriver: true runs those frames on the UI thread at 60fps instead of over the JS bridge. State still decides what is visible — the animated value only handles how it appears. Gesture-driven motion (swipe to dismiss, drag) belongs to react-native-reanimated with react-native-gesture-handler, whose handlers also run on the UI thread. Simple press feedback needs no library at all: Pressable's style function receives { pressed }.",
+    code: "import { useRef, useEffect } from 'react';\nimport { Animated, View, Text } from 'react-native';\n\nexport default function SavedToast({ visible }: { visible: boolean }) {\n  const opacity = useRef(new Animated.Value(0)).current;\n\n  useEffect(() => {\n    Animated.timing(opacity, {\n      toValue: visible ? 1 : 0,\n      duration: 300,\n      useNativeDriver: true, // frames run on the native UI thread\n    }).start();\n  }, [visible, opacity]);\n\n  return (\n    <Animated.View style={{ opacity }}>\n      <View style={{ padding: 16, backgroundColor: '#eee', borderRadius: 8 }}>\n        <Text>Saved!</Text>\n      </View>\n    </Animated.View>\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["Animated", "useNativeDriver", "Reanimated", "Gesture Handler", "opacity"],
+    expectedOutput:
+      "Toggling visible fades the Saved! toast in and out over 300ms — the timing runs on the native thread thanks to useNativeDriver, so it stays smooth even under load.",
+  },
+  {
+    id: "reactnative-debug",
+    moduleId: "reactnative",
+    group: "Shipping",
+    title: "Debugging and Build",
+    description: "Dev menu, redbox errors, dev builds, and EAS releases.",
+    explanation:
+      "Debug with the Dev Menu (shake gesture, Cmd+D on iOS, Cmd+M on Android): reload, element inspector, perf monitor, and React DevTools over the same bridge. Read in-app redbox errors from the top — the first stack frame is almost always your code. Remember the two-speed rule: JS and styles hot-reload, but new native modules need a fresh dev build (npx expo run:android / run:ios). When it works, ship with EAS: eas build produces store-ready binaries in the cloud and eas submit uploads them to the stores.",
+    code: "# Day-to-day development\nnpx expo start               # dev server — press r to reload, j for the debugger\n\n# After adding a native module or config plugin\nnpx expo run:android         # native dev build for Android\nnpx expo run:ios             # native dev build for iOS\n\n# Release\neas build -p android --profile production\neas build -p ios --profile production\neas submit -p android        # upload to the Play Store\neas submit -p ios            # upload to the App Store",
+    language: "bash",
+    previewType: "static",
+    interactive: false,
+    topics: ["Dev Menu", "React DevTools", "EAS Build", "eas submit", "dev client"],
+    expectedOutput:
+      "Terminal flow: expo start for fast JS iteration, expo run:* whenever native code changes, then EAS builds store-ready binaries and submits them to the Play Store and App Store.",
+  },
+];
+
 export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
   ...PLAYGROUND_LESSONS,
   ...PLAYGROUND_LESSONS_PART2,
@@ -4607,6 +4943,7 @@ export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
   ...PLAYGROUND_LESSONS_PART34,
   ...PLAYGROUND_LESSONS_PART35,
   ...PLAYGROUND_LESSONS_PART36,
+  ...PLAYGROUND_LESSONS_PART37,
 ].map((lesson) =>
   LESSON_SECTIONS[lesson.id] ? { ...lesson, sections: LESSON_SECTIONS[lesson.id] } : lesson
 )
