@@ -47,14 +47,16 @@ function ReactStateDemo() {
   )
 }
 
-function buildPreviewDoc(code: string, captureConsole: boolean): string {
+function buildPreviewDoc(code: string, captureConsole: boolean, inject?: string): string {
   const hook = captureConsole
     ? "<script>(function(){function s(k,a){try{var t=a.map(function(x){if(typeof x==='object'){try{return JSON.stringify(x)}catch(e){return String(x)}}return String(x)}).join(' ');parent.postMessage({type:'playground-console',kind:k,text:t},'*')}catch(e){}}var l=console.log,e=console.error;console.log=function(){s('log',Array.prototype.slice.call(arguments));return l.apply(console,arguments)};console.error=function(){s('error',Array.prototype.slice.call(arguments));return e.apply(console,arguments)};window.addEventListener('error',function(ev){s('error',[ev.message])})})();</script>"
     : ""
+  // Optional stand-in for a CDN library (e.g. axios) injected before the lesson code.
+  const lib = inject ?? ""
   if (/<html|<!doctype/i.test(code)) {
-    return code.replace(/<head[^>]*>/i, (m) => m + hook)
+    return code.replace(/<head[^>]*>/i, (m) => m + hook + lib)
   }
-  return "<!DOCTYPE html><html><head><meta charset=\"utf-8\" />" + hook + "</head><body>" + code + "</body></html>"
+  return "<!DOCTYPE html><html><head><meta charset=\"utf-8\" />" + hook + lib + "</head><body>" + code + "</body></html>"
 }
 
 type SidebarNode =
@@ -180,7 +182,7 @@ export function PlaygroundPage() {
 
   const previewDoc = useMemo(() => {
     if (!lesson || (!isLive && !isJS)) return ""
-    return buildPreviewDoc(code, isJS)
+    return buildPreviewDoc(code, isJS, lesson.previewInject)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, lesson?.id, runToken])
 

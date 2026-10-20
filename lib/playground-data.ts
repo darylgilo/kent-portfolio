@@ -16,16 +16,19 @@ export type Lesson = {
   expectedOutput?: string
   sampleTable?: { headers: string[]; rows: string[][] }
   sections?: { title: string; content: string }[]
+  /** Script injected into the preview iframe before the lesson code (e.g. an offline stand-in for a CDN library). */
+  previewInject?: string
 }
 
 export type ModuleCategoryId =
-  | "frontend"
+  | "core"
+  | "library"
+  | "frontend-framework"
+  | "fullstack"
+  | "runtime"
   | "backend"
   | "database"
-  | "devops"
-  | "fullstack"
-  | "framework"
-  | "library"
+  | "tooling"
 
 export type ModuleCategory = {
   id: ModuleCategoryId
@@ -34,13 +37,14 @@ export type ModuleCategory = {
 
 /** Ordered group labels rendered as the top tab row in the playground header. */
 export const MODULE_CATEGORIES: ModuleCategory[] = [
-  { id: "frontend", label: "Front End" },
-  { id: "backend", label: "Back End" },
-  { id: "fullstack", label: "Full Stack" },
-  { id: "database", label: "Database" },
-  { id: "devops", label: "DevOps" },
-  { id: "framework", label: "Framework" },
+  { id: "core", label: "Core" },
   { id: "library", label: "Library" },
+  { id: "frontend-framework", label: "Frontend Framework" },
+  { id: "fullstack", label: "Full Stack Framework" },
+  { id: "runtime", label: "Runtime Environment" },
+  { id: "backend", label: "Backend" },
+  { id: "database", label: "Database" },
+  { id: "tooling", label: "Tooling" },
 ]
 
 export type Module = {
@@ -52,19 +56,21 @@ export type Module = {
 }
 
 export const PLAYGROUND_MODULES: Module[] = [
-  { id: "html", label: "HTML", description: "Structure of the web — elements, text, links, forms.", category: "frontend" },
-  { id: "css", label: "CSS", description: "Styling — colors, layout, flexbox, transforms.", category: "frontend" },
-  { id: "tailwind", label: "Tailwind", description: "Utility-first styling, compared against raw CSS.", category: "framework" },
-  { id: "javascript", label: "JavaScript", description: "Logic, DOM, events, async code.", category: "frontend" },
-  { id: "typescript", label: "TypeScript", description: "Typed JavaScript — safer, clearer code.", category: "fullstack" },
+  { id: "html", label: "HTML", description: "Structure of the web — elements, text, links, forms.", category: "core" },
+  { id: "css", label: "CSS", description: "Styling — colors, layout, flexbox, transforms.", category: "core" },
+  { id: "javascript", label: "JavaScript", description: "Logic, DOM, events, async code.", category: "core" },
+  { id: "typescript", label: "TypeScript", description: "Typed JavaScript — safer, clearer code.", category: "core" },
   { id: "react", label: "React", description: "Components, props, and state.", category: "library" },
-  { id: "nextjs", label: "Next.js", description: "App Router, routing, and rendering concepts.", category: "framework" },
+  { id: "tailwind", label: "Tailwind", description: "Utility-first styling, compared against raw CSS.", category: "frontend-framework" },
+  { id: "nextjs", label: "Next.js", description: "App Router, routing, and rendering concepts.", category: "fullstack" },
+  { id: "laravel", label: "Laravel", description: "Routes, Blade, Eloquent, and Artisan.", category: "fullstack" },
+  { id: "nodejs", label: "Node.js", description: "Server-side JavaScript runtime, modules, file system, and events.", category: "runtime" },
+  { id: "express", label: "Express.js", description: "Backend API with routes, middleware, and JSON responses.", category: "backend" },
+  { id: "api", label: "API", description: "Axios, REST design, and the APIs used in modern web development.", category: "backend" },
   { id: "php", label: "PHP", description: "Server-side syntax and expected output.", category: "backend" },
-  { id: "laravel", label: "Laravel", description: "Routes, Blade, Eloquent, and Artisan.", category: "framework" },
   { id: "sql", label: "SQL", description: "Queries with sample tables and results.", category: "database" },
   { id: "postgres", label: "PostgreSQL", description: "JSONB, arrays, CTEs, full-text search, and psql.", category: "database" },
-  { id: "github", label: "Git & GitHub", description: "Commands with example terminal output.", category: "devops" },
-  { id: "express", label: "Express.js", description: "Backend API with routes, middleware, and JSON responses.", category: "backend" },
+  { id: "github", label: "Git & GitHub", description: "Commands with example terminal output.", category: "tooling" },
 ]
 
 /** Modules belonging to one header group, in tab order. */
@@ -3935,6 +3941,13 @@ const LESSON_ORDER: Record<string, string[]> = {
     "Database Integration", "JWT Authentication", "File Uploads with Multer",
     "CORS",
   ],
+  nodejs: [
+    "Node.js Basics", "CommonJS Modules", "File System (fs)", "Event Emitter",
+  ],
+  api: [
+    "Axios Basics", "Axios Config and Headers", "Interceptors and Error Handling",
+    "Axios in React", "REST API Design", "Consuming Public APIs",
+  ],
 }
 export const PLAYGROUND_LESSONS_PART32: Lesson[] = [
   {
@@ -4031,6 +4044,298 @@ export const PLAYGROUND_LESSONS_PART33: Lesson[] = [
   },
 ];
 
+/**
+ * Offline stand-in for the Axios CDN build, injected into lesson previews.
+ * It mirrors the parts of the Axios API used by these lessons (get/post/create/
+ * interceptors) and resolves without touching the network.
+ */
+const AXIOS_PREVIEW_INJECT = `<script>
+  (function () {
+    function AxiosError(message, config, response) {
+      var err = new Error(message);
+      err.isAxiosError = true;
+      err.config = config;
+      err.response = response;
+      err.request = {};
+      err.toString = function () { return message; };
+      return err;
+    }
+
+    function Axios(config) {
+      this.defaults = { headers: {} };
+      this.interceptors = {
+        request: { handlers: [], use: function (fn) { this.handlers.push(fn); } },
+        response: { handlers: [], use: function (fn) { this.handlers.push(fn); } },
+      };
+      this.defaults = config || {};
+      if (!this.defaults.headers) this.defaults.headers = {};
+    }
+
+    Axios.prototype._url = function (url, params) {
+      var full = (this.defaults.baseURL || '') + url;
+      if (!params) return full;
+      var qs = Object.keys(params)
+        .filter(function (k) { return params[k] !== undefined; })
+        .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); })
+        .join('&');
+      return qs ? full + (full.indexOf('?') === -1 ? '?' : '&') + qs : full;
+    };
+
+    // The offline stand-in answers from a tiny in-memory dataset.
+    Axios.prototype._mock = function (method, url, data) {
+      if (method === 'GET' && /\\/users\\/1$/.test(url)) {
+        return { status: 200, data: { id: 1, name: 'Leanne Graham', email: 'Sincere@april.biz' } };
+      }
+      if (method === 'GET' && /\\/posts\\/1$/.test(url)) {
+        return { status: 200, data: { id: 1, title: 'sunt aut facere repellat', body: 'demo body' } };
+      }
+      if (method === 'GET' && /\\/users$/.test(url)) {
+        return { status: 200, data: [{ id: 1, name: 'Kent' }] };
+      }
+      if (method === 'POST') {
+        return { status: 201, data: Object.assign({ id: 2 }, data || {}) };
+      }
+      return null;
+    };
+
+    Axios.prototype.request = function (config) {
+      var self = this;
+      var method = (config.method || 'GET').toUpperCase();
+      var url = self._url(config.url, config.params);
+      var cfg = {
+        method: method,
+        url: url,
+        headers: Object.assign({}, self.defaults.headers, config.headers),
+        data: config.data,
+        params: config.params,
+        timeout: config.timeout,
+      };
+
+      return Promise.resolve()
+        .then(function () {
+          var chain = self.interceptors.request.handlers.slice();
+          return chain.reduce(function (acc, fn) {
+            return acc.then(function (c) { return fn(c) || c; });
+          }, cfg);
+        })
+        .then(function (finalCfg) {
+          var mock = self._mock(method, finalCfg.url, finalCfg.data);
+          if (mock) {
+            return { status: mock.status, statusText: 'OK', data: mock.data, config: finalCfg, headers: {} };
+          }
+          throw AxiosError(
+            'Network Error (offline preview stand-in for axios)',
+            finalCfg,
+            { status: 0, data: '', config: finalCfg, headers: {} }
+          );
+        })
+        .then(function (response) {
+          return self.interceptors.response.handlers.reduce(function (acc, fn) {
+            return acc.then(function (r) { return fn(r) || r; });
+          }, response);
+        })
+        .catch(function (err) {
+          if (!err.isAxiosError) {
+            err = AxiosError(err.message, cfg, { status: 0, data: '', config: cfg, headers: {} });
+          }
+          throw err;
+        });
+    };
+
+    Axios.prototype.get = function (url, config) {
+      return this.request(Object.assign({}, config, { method: 'GET', url: url }));
+    };
+    Axios.prototype.post = function (url, data, config) {
+      return this.request(Object.assign({}, config, { method: 'POST', url: url, data: data }));
+    };
+    Axios.prototype.put = function (url, data, config) {
+      return this.request(Object.assign({}, config, { method: 'PUT', url: url, data: data }));
+    };
+    Axios.prototype.patch = function (url, data, config) {
+      return this.request(Object.assign({}, config, { method: 'PATCH', url: url, data: data }));
+    };
+    Axios.prototype.delete = function (url, config) {
+      return this.request(Object.assign({}, config, { method: 'DELETE', url: url }));
+    };
+
+    var axios = function (config) { return new Axios(config); };
+    axios.create = function (config) { return new Axios(config); };
+    axios.get = function (url, config) { return new Axios().get(url, config); };
+    axios.post = function (url, data, config) { return new Axios().post(url, data, config); };
+    axios.isAxiosError = function (e) { return !!(e && e.isAxiosError); };
+    window.axios = axios;
+  })();
+<\/script>`;
+
+export const PLAYGROUND_LESSONS_PART35: Lesson[] = [
+  {
+    id: "api-axios-basics",
+    moduleId: "api",
+    group: "Axios",
+    title: "Axios Basics",
+    description: "GET, POST, and the request/response shape.",
+    explanation:
+      "Axios is a promise-based HTTP client for the browser and Node. axios.get(url) fetches, axios.post(url, body) sends JSON, and every call resolves with a response object: res.data holds the payload, res.status the HTTP code. This lesson uses a mock adapter so it runs offline — the code shape is identical to a real call.",
+    code: "<script>\n  // `axios` is available globally in this preview (offline stand-in for the Axios CDN build)\n  async function main() {\n    const res = await axios.get('/users');\n    console.log('status:', res.status);\n    console.log('data:', res.data);\n\n    const created = await axios.post('/users', { name: 'Ana' });\n    console.log('created:', created.status, created.data);\n\n    try {\n      await axios.get('/not-a-real-route');\n    } catch (err) {\n      console.log('error:', err.message);\n    }\n  }\n\n  main();\n</script>\n<p>Press Run. Add another field to the POST body and run again.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["axios", "get", "post", "response", "data"],
+  },
+  {
+    id: "api-axios-config",
+    moduleId: "api",
+    group: "Axios",
+    title: "Axios Config and Headers",
+    description: "Base URL, timeouts, and custom headers.",
+    explanation:
+      "Every axios call takes a config object. Setting baseURL once means every path can be relative — axios.create({ baseURL }) returns a pre-configured instance you can reuse. timeout aborts a hanging request, and headers carry auth tokens or content type.",
+    code: "<script>\n  // `axios` is available globally in this preview (offline stand-in for the Axios CDN build)\n  const client = axios.create({\n    baseURL: 'https://api.example.com/v1',\n    timeout: 5000,\n    headers: {\n      'Content-Type': 'application/json',\n      Authorization: 'Bearer ' + 'YOUR_TOKEN',\n    },\n  });\n\n  console.log('baseURL:', client.defaults.baseURL);\n  console.log('timeout:', client.defaults.timeout);\n  console.log('auth header:', client.defaults.headers.Authorization);\n\n  // A request with per-call overrides\n  const config = {\n    method: 'POST',\n    url: '/posts',\n    data: { title: 'Hello' },\n    params: { page: 1, limit: 10 },\n    timeout: 3000,\n  };\n\n  console.log('full url:', client.defaults.baseURL + config.url);\n  console.log('query string:', '?page=' + config.params.page + '&limit=' + config.params.limit);\n\n  // axios.create keeps the defaults for every call\n  client.get('/users').catch(() => console.log('no network in preview — defaults still apply'));\n</script>\n<p>Press Run. Try changing the timeout or adding a header.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["axios.create", "baseURL", "timeout", "headers", "params"],
+  },
+  {
+    id: "api-axios-interceptors",
+    moduleId: "api",
+    group: "Axios",
+    title: "Interceptors and Error Handling",
+    description: "One place for auth tokens and one place for errors.",
+    explanation:
+      "Interceptors let you hook into every request before it is sent and every response before it is handled. A request interceptor is the cleanest place to attach an auth token; a response interceptor is the cleanest place to handle 401 redirects and normalize errors. Axios rejects on any non-2xx status by default, so catch the error and read err.response.",
+    code: "<script>\n  // `axios` is available globally in this preview (offline stand-in for the Axios CDN build)\n  const api = axios.create({ baseURL: '/api' });\n\n  // Request interceptor — runs before every call\n  api.interceptors.request.use((config) => {\n    config.headers.Authorization = 'Bearer ' + 'TOKEN_FROM_STORAGE';\n    console.log('[request]', config.method, config.url, config.headers.Authorization);\n    return config;\n  });\n\n  // Response interceptor — runs on every successful response\n  api.interceptors.response.use((res) => {\n    console.log('[response]', res.status, 'OK');\n    return res;\n  });\n\n  api.get('/users').then((res) => console.log('data:', res.data));\n\n  // Error shape you get on a failed request\n  api.get('/missing').catch((err) => {\n    console.log('error message:', err.message);\n    console.log('status:', err.response ? err.response.status : 'no response');\n    console.log('is axios error:', axios.isAxiosError(err));\n  });\n</script>\n<p>Press Run. The interceptors fire on every call — add another one.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["interceptors", "error handling", "authorization", "status"],
+  },
+  {
+    id: "api-axios-react",
+    moduleId: "api",
+    group: "Axios",
+    title: "Axios in React",
+    description: "Fetch on mount, handle loading and error states.",
+    explanation:
+      "In React, requests belong in useEffect with an empty dependency array so they run once on mount. Always clean up with a cancelled flag or AbortController, otherwise a slow response can overwrite state after the component unmounts. The three states to handle are loading, error, and success.",
+    code: "import { useEffect, useState } from 'react';\nimport axios from 'axios';\n\nconst api = axios.create({ baseURL: '/api' });\n\nfunction UserList() {\n  const [users, setUsers] = useState([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState(null);\n\n  useEffect(() => {\n    let cancelled = false;\n\n    async function load() {\n      try {\n        const { data } = await api.get('/users');\n        if (!cancelled) setUsers(data);\n      } catch (err) {\n        if (!cancelled) setError(err.response?.status ?? 'Network error');\n      } finally {\n        if (!cancelled) setLoading(false);\n      }\n    }\n\n    load();\n    return () => { cancelled = true; };\n  }, []);\n\n  if (loading) return <p>Loading...</p>;\n  if (error) return <p>Failed: {error}</p>;\n\n  return (\n    <ul>\n      {users.map((u) => <li key={u.id}>{u.name}</li>)}\n    </ul>\n  );\n}",
+    language: "tsx",
+    previewType: "static",
+    interactive: false,
+    topics: ["useEffect", "axios", "cleanup", "loading", "error"],
+    expectedOutput:
+      "Shows Loading... first, then the user list — or the error line if the request fails. The cancelled flag stops a late response from updating an unmounted component.",
+  },
+  {
+    id: "api-rest-design",
+    moduleId: "api",
+    group: "REST",
+    title: "REST API Design",
+    description: "Resources, HTTP verbs, status codes, and versioning.",
+    explanation:
+      "REST models your backend as resources addressed by URL: /users, /users/7, /users/7/posts. The HTTP verb carries the action — GET reads, POST creates, PUT replaces, PATCH updates partially, DELETE removes. Status codes tell the client what happened: 2xx success, 4xx the client got it wrong, 5xx the server did. Use plural nouns for collections and keep versions in the path (/v1/users) so old clients keep working.",
+    code: "// A tiny REST API in Express\nconst express = require('express');\nconst app = express();\napp.use(express.json());\n\nlet users = [\n  { id: 1, name: 'Kent' },\n  { id: 2, name: 'Ana' },\n];\n\n// GET /api/v1/users — list a collection\napp.get('/api/v1/users', (req, res) => {\n  res.status(200).json(users);\n});\n\n// GET /api/v1/users/:id — read one resource\napp.get('/api/v1/users/:id', (req, res) => {\n  const user = users.find((u) => u.id === Number(req.params.id));\n  if (!user) {\n    return res.status(404).json({ error: 'User not found' });\n  }\n  res.status(200).json(user);\n});\n\n// POST /api/v1/users — create a resource\napp.post('/api/v1/users', (req, res) => {\n  const user = { id: users.length + 1, ...req.body };\n  users.push(user);\n  res.status(201).json(user);\n});\n\n// PATCH /api/v1/users/:id — partial update\napp.patch('/api/v1/users/:id', (req, res) => {\n  const index = users.findIndex((u) => u.id === Number(req.params.id));\n  if (index === -1) return res.status(404).json({ error: 'User not found' });\n  users[index] = { ...users[index], ...req.body };\n  res.status(200).json(users[index]);\n});\n\n// DELETE /api/v1/users/:id — remove a resource\napp.delete('/api/v1/users/:id', (req, res) => {\n  users = users.filter((u) => u.id !== Number(req.params.id));\n  res.status(204).send();\n});\n\napp.listen(3000, () => console.log('API on http://localhost:3000'));",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["REST", "resources", "HTTP verbs", "status codes", "versioning"],
+    sampleTable: {
+      headers: ["Method", "Purpose", "Success", "Client Error"],
+      rows: [
+        ["GET", "Read a resource", "200", "404 Not Found"],
+        ["POST", "Create a resource", "201 Created", "422 Unprocessable"],
+        ["PUT", "Replace a resource", "200", "409 Conflict"],
+        ["PATCH", "Partial update", "200", "400 Bad Request"],
+        ["DELETE", "Remove a resource", "204 No Content", "404 Not Found"],
+      ],
+    },
+    expectedOutput:
+      "The table maps each HTTP verb to its job and the status codes it returns. Run the server and try: curl -i http://localhost:3000/api/v1/users",
+  },
+  {
+    id: "api-popular-apis",
+    moduleId: "api",
+    group: "Popular APIs",
+    title: "Popular APIs in Web Dev",
+    description: "GitHub, JSONPlaceholder, OpenWeather, and OpenAI.",
+    explanation:
+      "Most apps are built on other people's APIs. GitHub serves repo and user data, JSONPlaceholder is a free fake REST backend for prototyping, OpenWeather returns current conditions and forecasts, and OpenAI exposes chat and embeddings models. Read each provider's docs for auth: most use a bearer token in an Authorization header, and OpenWeather uses a query key. This demo calls JSONPlaceholder and falls back to bundled data if the network is unavailable.",
+    code: "<script>\n  // Popular APIs commonly used in web development\n  const APIS = [\n    { name: 'GitHub', url: 'https://api.github.com/users/ghost', auth: 'Bearer token' },\n    { name: 'JSONPlaceholder', url: 'https://jsonplaceholder.typicode.com/users/1', auth: 'None' },\n    { name: 'OpenWeather', url: 'https://api.openweathermap.org/data/2.5/weather?q=London&appid=KEY', auth: 'Query key' },\n    { name: 'OpenAI', url: 'https://api.openai.com/v1/chat/completions', auth: 'Bearer token' },\n  ];\n\n  console.log('Popular APIs:');\n  for (const api of APIS) console.log(' -', api.name, '| auth:', api.auth);\n\n  // The same call with Axios — errors are handled the same way as fetch\n  const api = axios.create({ baseURL: 'https://jsonplaceholder.typicode.com' });\n  api.get('/posts/1')\n    .then((res) => console.log('post title:', res.data.title))\n    .catch((err) => console.log('request failed:', err.message));\n</script>\n<p>Press Run. The preview uses an offline Axios stand-in — swap the baseURL for a real API and the code is unchanged.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["GitHub API", "JSONPlaceholder", "OpenWeather", "OpenAI", "axios"],
+  },
+];
+
+export const PLAYGROUND_LESSONS_PART34: Lesson[] = [
+  {
+    id: "nodejs-basics",
+    moduleId: "nodejs",
+    group: "Getting Started",
+    title: "Node.js Basics",
+    description: "Run JavaScript on the server with Node.js runtime.",
+    explanation:
+      "Node.js is a JavaScript runtime built on Chrome's V8 engine. It lets you run JS outside the browser using the `node` command. Core modules like `fs`, `path`, and `http` are built-in — no installation needed.",
+    code: "const fs = require('fs');\nconst path = require('path');\nconst http = require('http');\n\nconsole.log('Node.js version:', process.version);\nconsole.log('Current directory:', __dirname);\n\nconst server = http.createServer((req, res) => {\n  res.writeHead(200, { 'Content-Type': 'text/plain' });\n  res.end('Hello from Node.js!');\n});\n\nserver.listen(3000, () => {\n  console.log('Server running at http://localhost:3000');\n});",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["node", "runtime", "core-modules", "http"],
+    expectedOutput: "Terminal: Node.js version: v20.x.x\nTerminal: Server running at http://localhost:3000\nBrowser: Hello from Node.js!",
+  },
+  {
+    id: "nodejs-modules",
+    moduleId: "nodejs",
+    group: "Modules",
+    title: "CommonJS Modules",
+    description: "Export and import modules with require() and module.exports.",
+    explanation:
+      "Node.js uses CommonJS by default. Use `module.exports` to export values and `require()` to import them. Each file is its own module with its own scope.",
+    code: "// math.js\nmodule.exports = {\n  add: (a, b) => a + b,\n  subtract: (a, b) => a - b,\n};\n\n// app.js\nconst math = require('./math');\nconsole.log(math.add(5, 3)); // 8\nconsole.log(math.subtract(10, 4)); // 6",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["require", "module.exports", "commonjs"],
+    expectedOutput: "8\n6",
+  },
+  {
+    id: "nodejs-file-system",
+    moduleId: "nodejs",
+    group: "File System",
+    title: "File System (fs)",
+    description: "Read and write files with the fs module.",
+    explanation:
+      "The `fs` module lets you read, write, create, and delete files. Use the promise-based `fs/promises` for async/await style, or callbacks for the classic approach.",
+    code: "const fs = require('fs/promises');\n\nasync function example() {\n  await fs.writeFile('hello.txt', 'Hello from Node.js!');\n  const content = await fs.readFile('hello.txt', 'utf8');\n  console.log(content);\n  await fs.unlink('hello.txt');\n}\n\nexample().catch(console.error);",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["fs", "readFile", "writeFile", "unlink", "promises"],
+    expectedOutput: "Hello from Node.js!",
+  },
+  {
+    id: "nodejs-events",
+    moduleId: "nodejs",
+    group: "Events",
+    title: "Event Emitter",
+    description: "Build event-driven applications with EventEmitter.",
+    explanation:
+      "Node.js core uses an event-driven architecture. The `EventEmitter` class lets you emit and listen to custom events — perfect for building scalable, decoupled applications.",
+    code: "const { EventEmitter } = require('events');\n\nconst emitter = new EventEmitter();\n\nemitter.on('userLogin', (user) => {\n  console.log(`${user} logged in`);\n});\n\nemitter.on('userLogin', (user) => {\n  console.log(`Welcome email sent to ${user}`);\n});\n\nemitter.emit('userLogin', 'Kent');",
+    language: "javascript",
+    previewType: "static",
+    interactive: false,
+    topics: ["eventemitter", "emit", "on", "events"],
+    expectedOutput: "Kent logged in\nWelcome email sent to Kent",
+  },
+];
+
+
 export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
   ...PLAYGROUND_LESSONS,
   ...PLAYGROUND_LESSONS_PART2,
@@ -4065,6 +4370,8 @@ export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
   ...PLAYGROUND_LESSONS_PART31,
   ...PLAYGROUND_LESSONS_PART32,
   ...PLAYGROUND_LESSONS_PART33,
+  ...PLAYGROUND_LESSONS_PART34,
+  ...PLAYGROUND_LESSONS_PART35,
 ].map((lesson) =>
   LESSON_SECTIONS[lesson.id] ? { ...lesson, sections: LESSON_SECTIONS[lesson.id] } : lesson
 )
