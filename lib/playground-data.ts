@@ -61,6 +61,7 @@ export const PLAYGROUND_MODULES: Module[] = [
   { id: "javascript", label: "JavaScript", description: "Logic, DOM, events, async code.", category: "core" },
   { id: "typescript", label: "TypeScript", description: "Typed JavaScript — safer, clearer code.", category: "core" },
   { id: "react", label: "React", description: "Components, props, and state.", category: "library" },
+  { id: "axios", label: "Axios", description: "Promise-based HTTP client — requests, instances, interceptors, and error handling.", category: "library" },
   { id: "tailwind", label: "Tailwind", description: "Utility-first styling, compared against raw CSS.", category: "frontend-framework" },
   { id: "nextjs", label: "Next.js", description: "App Router, routing, and rendering concepts.", category: "fullstack" },
   { id: "laravel", label: "Laravel", description: "Routes, Blade, Eloquent, and Artisan.", category: "fullstack" },
@@ -3897,6 +3898,12 @@ const LESSON_ORDER: Record<string, string[]> = {
     "Conditional Rendering", "Lists and Keys", "Forms", "useEffect", "useRef",
     "Context", "Custom Hooks", "Data Fetching", "Component Patterns",
   ],
+  axios: [
+    "Axios Basics", "GET and POST Requests", "PUT, PATCH, and DELETE",
+    "Query Params and Path Params", "Config and Headers",
+    "Async Await and Parallel Requests",
+    "Interceptors and Error Handling", "HTTP Error Statuses",
+  ],
   nextjs: [
     "App Router Basics", "Project Structure", "Pages", "Layouts",
     "Link and Navigation", "Dynamic Routes", "Server and Client",
@@ -4046,8 +4053,9 @@ export const PLAYGROUND_LESSONS_PART33: Lesson[] = [
 
 /**
  * Offline stand-in for the Axios CDN build, injected into lesson previews.
- * It mirrors the parts of the Axios API used by these lessons (get/post/create/
- * interceptors) and resolves without touching the network.
+ * It mirrors the parts of the Axios API used by these lessons (get/post/put/
+ * patch/delete/create/interceptors, params, non-2xx statuses) and resolves
+ * without touching the network.
  */
 const AXIOS_PREVIEW_INJECT = `<script>
   (function () {
@@ -4081,19 +4089,60 @@ const AXIOS_PREVIEW_INJECT = `<script>
       return qs ? full + (full.indexOf('?') === -1 ? '?' : '&') + qs : full;
     };
 
-    // The offline stand-in answers from a tiny in-memory dataset.
-    Axios.prototype._mock = function (method, url, data) {
-      if (method === 'GET' && /\\/users\\/1$/.test(url)) {
-        return { status: 200, data: { id: 1, name: 'Leanne Graham', email: 'Sincere@april.biz' } };
+    // Digits after '/segment/' (e.g. /users/7 -> 7), or null when there is none.
+    function trailingId(path, segment) {
+      var marker = '/' + segment + '/';
+      var i = path.lastIndexOf(marker);
+      if (i === -1) return null;
+      var rest = path.slice(i + marker.length);
+      if (!rest) return null;
+      for (var k = 0; k < rest.length; k++) {
+        var code = rest.charCodeAt(k);
+        if (code < 48 || code > 57) return null;
       }
-      if (method === 'GET' && /\\/posts\\/1$/.test(url)) {
+      return Number(rest);
+    }
+
+    function endsWith(str, suffix) {
+      return str.length >= suffix.length && str.slice(str.length - suffix.length) === suffix;
+    }
+
+    function statusTextFor(status) {
+      if (status === 201) return 'Created';
+      if (status === 204) return 'No Content';
+      if (status === 404) return 'Not Found';
+      if (status >= 500) return 'Server Error';
+      if (status >= 400) return 'Bad Request';
+      return 'OK';
+    }
+
+    // The offline stand-in answers from a tiny in-memory dataset. The query
+    // string is stripped first so 'params' never breaks route matching, and a
+    // non-2xx mock status rejects exactly like it would in real axios.
+    Axios.prototype._mock = function (method, url, data) {
+      var path = url.split('?')[0];
+      var userId = trailingId(path, 'users');
+      var postId = trailingId(path, 'posts');
+      if (method === 'GET' && postId === 1) {
         return { status: 200, data: { id: 1, title: 'sunt aut facere repellat', body: 'demo body' } };
       }
-      if (method === 'GET' && /\\/users$/.test(url)) {
+      if (method === 'GET' && userId === 1) {
+        return { status: 200, data: { id: 1, name: 'Leanne Graham', email: 'Sincere@april.biz' } };
+      }
+      if (method === 'GET' && endsWith(path, '/users')) {
         return { status: 200, data: [{ id: 1, name: 'Kent' }] };
+      }
+      if (method === 'GET' && userId !== null) {
+        return { status: 404, data: { message: 'User ' + userId + ' not found' } };
       }
       if (method === 'POST') {
         return { status: 201, data: Object.assign({ id: 2 }, data || {}) };
+      }
+      if ((method === 'PUT' || method === 'PATCH') && userId !== null) {
+        return { status: 200, data: Object.assign({ id: userId }, data || {}) };
+      }
+      if (method === 'DELETE' && userId !== null) {
+        return { status: 204, data: '' };
       }
       return null;
     };
@@ -4116,23 +4165,34 @@ const AXIOS_PREVIEW_INJECT = `<script>
           var chain = self.interceptors.request.handlers.slice();
           return chain.reduce(function (acc, fn) {
             return acc.then(function (c) { return fn(c) || c; });
-          }, cfg);
+          }, Promise.resolve(cfg));
         })
         .then(function (finalCfg) {
           var mock = self._mock(method, finalCfg.url, finalCfg.data);
           if (mock) {
-            return { status: mock.status, statusText: 'OK', data: mock.data, config: finalCfg, headers: {} };
+            var response = {
+              status: mock.status,
+              statusText: statusTextFor(mock.status),
+              data: mock.data,
+              config: finalCfg,
+              headers: { 'content-type': mock.status === 204 ? null : 'application/json' },
+            };
+            if (mock.status >= 300) {
+              // Real axios rejects any non-2xx status; the error carries err.response.
+              throw AxiosError('Request failed with status code ' + mock.status, finalCfg, response);
+            }
+            return response;
           }
           throw AxiosError(
             'Network Error (offline preview stand-in for axios)',
             finalCfg,
-            { status: 0, data: '', config: finalCfg, headers: {} }
+            { status: 0, statusText: '', data: '', config: finalCfg, headers: {} }
           );
         })
         .then(function (response) {
           return self.interceptors.response.handlers.reduce(function (acc, fn) {
             return acc.then(function (r) { return fn(r) || r; });
-          }, response);
+          }, Promise.resolve(response));
         })
         .catch(function (err) {
           if (!err.isAxiosError) {
@@ -4162,6 +4222,9 @@ const AXIOS_PREVIEW_INJECT = `<script>
     axios.create = function (config) { return new Axios(config); };
     axios.get = function (url, config) { return new Axios().get(url, config); };
     axios.post = function (url, data, config) { return new Axios().post(url, data, config); };
+    axios.put = function (url, data, config) { return new Axios().put(url, data, config); };
+    axios.patch = function (url, data, config) { return new Axios().patch(url, data, config); };
+    axios.delete = function (url, config) { return new Axios().delete(url, config); };
     axios.isAxiosError = function (e) { return !!(e && e.isAxiosError); };
     window.axios = axios;
   })();
@@ -4336,6 +4399,129 @@ export const PLAYGROUND_LESSONS_PART34: Lesson[] = [
 ];
 
 
+export const PLAYGROUND_LESSONS_PART36: Lesson[] = [
+  {
+    id: "axios-basics",
+    moduleId: "axios",
+    group: "Getting Started",
+    title: "Axios Basics",
+    description: "Send a GET request and read the response object.",
+    explanation:
+      "Axios is a promise-based HTTP client for the browser and Node.js. axios.get(url) returns a promise that resolves to a response object: res.status holds the HTTP status code and res.data holds the parsed JSON body — axios parses JSON for you, unlike raw fetch. It also rejects on any non-2xx response, so a single .catch handles both network failures and HTTP errors. The preview runs against an offline Axios stand-in, so no network is needed.",
+    code: "<script>\n  // `axios` is available globally in this preview (offline stand-in for the Axios CDN build)\n  async function main() {\n    const res = await axios.get('/users/1');\n    console.log('status:', res.status);\n    console.log('name:', res.data.name);\n    console.log('email:', res.data.email);\n\n    const post = await axios.get('/posts/1');\n    console.log('post title:', post.data.title);\n  }\n\n  main().catch((err) => console.log('error:', err.message));\n</script>\n<p>Press Run. Change /users/1 to /users and inspect the array that comes back.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["axios", "get", "response", "status", "data"],
+  },
+  {
+    id: "axios-requests",
+    moduleId: "axios",
+    group: "Requests",
+    title: "GET and POST Requests",
+    description: "Read lists, send JSON bodies, and handle failed requests.",
+    explanation:
+      "Almost every API call is a verb plus a payload. axios.get(url) reads, axios.post(url, data) sends JSON (axios serializes the object and sets the Content-Type header for you), and axios.put / axios.patch / axios.delete follow the same shape: (url, data, config) for writes, (url, config) for reads. Every call returns a promise, so use async/await or .then/.catch — a rejected promise means the request failed or the server answered with a non-2xx status.",
+    code: "<script>\n  async function main() {\n    // GET with a list response\n    const users = await axios.get('/users');\n    console.log('users:', users.data.length, '->', users.data[0].name);\n\n    // POST sends a JSON body; axios sets Content-Type for you\n    const created = await axios.post('/users', { name: 'Kent', role: 'dev' });\n    console.log('created:', created.status, created.data);\n\n    // A missing route (or any non-2xx status) rejects the promise\n    try {\n      await axios.get('/does-not-exist');\n    } catch (err) {\n      console.log('failed:', err.message);\n      console.log('is axios error:', axios.isAxiosError(err));\n    }\n  }\n\n  main();\n</script>\n<p>Press Run. Add another field to the POST body and run again.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["get", "post", "json", "async/await", "error"],
+  },
+  {
+    id: "axios-config",
+    moduleId: "axios",
+    group: "Requests",
+    title: "Config and Headers",
+    description: "baseURL, default headers, timeouts, and per-call overrides.",
+    explanation:
+      "Every axios call accepts a config object: url, method, headers, params (query string), data (body), and timeout. Instead of repeating it, axios.create({ baseURL, headers, timeout }) builds a reusable instance whose defaults apply to every call — per-call config overrides them. baseURL keeps paths short and makes swapping environments a one-line change; headers carry auth tokens; params become the query string; timeout aborts a hanging request.",
+    code: "<script>\n  // axios.create returns an instance that keeps these defaults for every call\n  const client = axios.create({\n    baseURL: 'https://api.example.com/v1',\n    timeout: 5000,\n    headers: {\n      'Content-Type': 'application/json',\n      Authorization: 'Bearer ' + 'TOKEN_FROM_STORAGE',\n    },\n  });\n\n  console.log('baseURL:', client.defaults.baseURL);\n  console.log('timeout:', client.defaults.timeout);\n  console.log('auth:', client.defaults.headers.Authorization);\n\n  // The instance resolves the full URL — the offline stand-in answers /users/1\n  client.get('/users/1').then((res) => console.log('fetched:', res.data.name));\n\n  // Per-call config overrides the instance defaults\n  client\n    .post('/users', { name: 'Kent' }, { headers: { 'X-Request-Id': 'req-42' }, timeout: 3000 })\n    .then((res) => console.log('posted:', res.status, 'req id:', res.config.headers['X-Request-Id']));\n</script>\n<p>Press Run. Change the baseURL or add another default header.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["axios.create", "baseURL", "headers", "timeout", "params"],
+  },
+  {
+    id: "axios-interceptors",
+    moduleId: "axios",
+    group: "Error Handling",
+    title: "Interceptors and Error Handling",
+    description: "Attach auth once with interceptors; inspect errors in one catch.",
+    explanation:
+      "Interceptors hook into every request before it is sent and every response before your .then runs. A request interceptor is the cleanest place to attach an auth token once instead of on each call; a response interceptor can log, retry, or normalize responses. When a request fails, axios rejects with an error you can inspect: err.message explains what happened, err.response.status carries the HTTP code (0 means the request never reached the server), and axios.isAxiosError(err) confirms the error came from axios.",
+    code: "<script>\n  const api = axios.create({ baseURL: '/api' });\n\n  // Request interceptor — runs before every request is sent\n  api.interceptors.request.use((config) => {\n    config.headers.Authorization = 'Bearer ' + 'TOKEN_FROM_STORAGE';\n    console.log('[request]', config.method, config.url);\n    return config;\n  });\n\n  // Response interceptor — runs on every response before your .then\n  api.interceptors.response.use((res) => {\n    console.log('[response]', res.status, res.config.url);\n    return res;\n  });\n\n  api.get('/users/1').then((res) => console.log('data:', res.data.name));\n\n  // Axios rejects on errors — read err.response for the status\n  api.get('/missing').catch((err) => {\n    console.log('error:', err.message);\n    console.log('status:', err.response ? err.response.status : 'no response');\n    console.log('is axios error:', axios.isAxiosError(err));\n  });\n</script>\n<p>Press Run. The interceptors fire on every call — add one more log line.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["interceptors", "error handling", "authorization", "status", "axios.isAxiosError"],
+  },
+  {
+    id: "axios-crud",
+    moduleId: "axios",
+    group: "Requests",
+    title: "PUT, PATCH, and DELETE",
+    description: "Update and remove resources with the write verbs.",
+    explanation:
+      "REST write verbs follow one shape: axios.put(url, data, config) replaces the whole resource, axios.patch(url, data, config) sends only the fields that change, and axios.delete(url, config) removes it. The server's status tells you what happened — 200 with the updated body for writes, 204 No Content (empty body) for a delete. All three are just axios.request({ method }) under the hood, so per-call config and interceptors work exactly the same as with GET.",
+    code: "<script>\n  const api = axios.create({ baseURL: '/api' });\n\n  async function main() {\n    // PUT — replace the whole resource with a complete body\n    const updated = await api.put('/users/1', { name: 'Kent Gilo', email: 'kent@example.com' });\n    console.log('PUT', updated.status, updated.statusText, updated.data);\n\n    // PATCH — send only the fields that change\n    const patched = await api.patch('/users/1', { name: 'Kent' });\n    console.log('PATCH', patched.status, patched.data);\n\n    // DELETE — commonly answered with 204 No Content (empty body)\n    const deleted = await api.delete('/users/1');\n    console.log('DELETE', deleted.status, deleted.statusText, 'body:', JSON.stringify(deleted.data));\n  }\n\n  main().catch((err) => console.log('error:', err.message));\n</script>\n<p>Press Run. Change the PATCH body to update a different field.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["axios.put", "axios.patch", "axios.delete", "204", "CRUD"],
+  },
+  {
+    id: "axios-params",
+    moduleId: "axios",
+    group: "Requests",
+    title: "Query Params and Path Params",
+    description: "Build URLs from a params object or a template string.",
+    explanation:
+      "Two ways to shape a URL. For the query string, pass a params object — axios encodes every key/value and appends them after ?, so { page: 2, q: 'kent gilo' } becomes ?page=2&q=kent%20gilo without you calling encodeURIComponent yourself. For a path param (an id that lives inside the URL), build the string yourself, usually with a template literal: `/users/${id}`. Combine both with a baseURL and each call only supplies the part that changes.",
+    code: "<script>\n  const api = axios.create({ baseURL: '/api' });\n\n  async function main() {\n    // params object -> query string (axios URL-encodes the values for you)\n    const list = await api.get('/users', { params: { page: 2, limit: 5, q: 'kent gilo' } });\n    console.log('full URL:', list.config.url);\n    console.log('items:', list.data.length);\n\n    // Path param -> part of the URL itself, built with a template literal\n    const userId = 1;\n    const single = await api.get(`/users/${userId}`);\n    console.log('path param /users/' + userId, '->', single.data.name);\n\n    // baseURL + params together\n    const paged = await api.get('/users', { params: { _page: 1 } });\n    console.log('baseURL + params:', paged.config.url);\n  }\n\n  main().catch((err) => console.log('error:', err.message));\n</script>\n<p>Press Run. Add another field to params and watch the full URL change.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["params", "query string", "URL encoding", "template literals", "baseURL"],
+  },
+  {
+    id: "axios-async",
+    moduleId: "axios",
+    group: "Async Patterns",
+    title: "Async Await and Parallel Requests",
+    description: "Sequential awaits, Promise.all for parallel calls, try/catch/finally.",
+    explanation:
+      "Every axios call returns a promise, so await turns them into straight-line code — and because a rejected await throws, one try/catch around the whole function catches every failure inside it. The catch runs for both network failures and non-2xx responses, and finally always runs (cleanup, turning a spinner off). Sequential awaits wait on each other, so independent requests belong in Promise.all, which fires them together and resolves once with all the results.",
+    code: "<script>\n  const api = axios.create({ baseURL: '/api' });\n\n  // 1) await reads like straight-line code\n  async function loadUser() {\n    const { status, data } = await api.get('/users/1');\n    console.log('user:', status, data.name);\n  }\n\n  // 2) Independent requests run in parallel — one await for all of them\n  async function loadFeed() {\n    const [userRes, postRes] = await Promise.all([\n      api.get('/users/1'),\n      api.get('/posts/1'),\n    ]);\n    console.log('parallel:', userRes.data.name, '+', postRes.data.title);\n  }\n\n  // 3) One try/catch/finally covers every awaited call in the function\n  async function loadPage() {\n    try {\n      await api.get('/users/999'); // answers 404 in this offline preview\n    } catch (err) {\n      console.log('caught:', err.response.status, err.message);\n    } finally {\n      console.log('finally always runs');\n    }\n  }\n\n  loadUser();\n  loadFeed();\n  loadPage();\n</script>\n<p>Press Run. Add a fourth request to the Promise.all list.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["async/await", "Promise.all", "try/catch", "finally", "parallel requests"],
+  },
+  {
+    id: "axios-error-statuses",
+    moduleId: "axios",
+    group: "Error Handling",
+    title: "HTTP Error Statuses",
+    description: "Tell 404s and 500s apart from real network failures.",
+    explanation:
+      "axios rejects on any status outside 200–299, so a single catch sees every failure — but the failure has two shapes. An HTTP error means the server answered: err.response.status carries 404, 500, etc., and err.response.data usually holds the server's error body. A network error means no HTTP response ever arrived (offline, DNS, timeout); with real axios err.response is undefined, and this offline stand-in reports it as status 0, so the same branch handles both. Check err.response first, and use axios.isAxiosError(err) before trusting the error's fields.",
+    code: "<script>\n  const api = axios.create({ baseURL: '/api' });\n\n  async function fetchUser(id) {\n    try {\n      const res = await api.get(`/users/${id}`);\n      console.log(id, '->', res.status, res.statusText, res.data.name);\n    } catch (err) {\n      if (!axios.isAxiosError(err)) throw err;\n      const status = err.response ? err.response.status : 0;\n      if (status === 0) {\n        // No HTTP response at all (offline, DNS failure, timeout)\n        console.log(id, '-> network error:', err.message);\n      } else if (status === 404) {\n        // The server answered — err.response.data holds its error body\n        console.log(id, '-> 404 Not Found:', err.response.data.message);\n      } else if (status >= 500) {\n        console.log(id, '-> 5xx server error:', status);\n      } else {\n        console.log(id, '-> 4xx client error:', status);\n      }\n    }\n  }\n\n  async function main() {\n    await fetchUser(1); // 200 OK\n    await fetchUser(999); // 404 Not Found — the server answered\n    try {\n      await api.get('/no-such-route'); // never reaches a route: network error\n    } catch (err) {\n      console.log('network failure status:', err.response.status, '|', err.message);\n    }\n  }\n\n  main();\n</script>\n<p>Press Run. Change 999 to another id and compare the two failure branches.</p>",
+    language: "html",
+    previewType: "javascript",
+    interactive: true,
+    previewInject: AXIOS_PREVIEW_INJECT,
+    topics: ["404", "500", "err.response", "status codes", "network error"],
+  },
+];
+
 export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
   ...PLAYGROUND_LESSONS,
   ...PLAYGROUND_LESSONS_PART2,
@@ -4372,6 +4558,7 @@ export const ALL_PLAYGROUND_LESSONS: Lesson[] = [
   ...PLAYGROUND_LESSONS_PART33,
   ...PLAYGROUND_LESSONS_PART34,
   ...PLAYGROUND_LESSONS_PART35,
+  ...PLAYGROUND_LESSONS_PART36,
 ].map((lesson) =>
   LESSON_SECTIONS[lesson.id] ? { ...lesson, sections: LESSON_SECTIONS[lesson.id] } : lesson
 )
