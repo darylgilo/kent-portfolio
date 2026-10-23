@@ -872,6 +872,9 @@ export function ChatBot() {
   const discardTranscriptRef = useRef(false)
   // Mirrors scorpiOpen for use inside recognition timeouts/callbacks.
   const scorpiOpenRef = useRef(false)
+  // Mirrors isStopped so async transcription callbacks (Whisper -> handleSend)
+  // always read the latest standby state, never a stale closure.
+  const isStoppedRef = useRef(false)
   // Mirrors detectedLang for use inside async transcription callbacks.
   const detectedLangRef = useRef<DetectedLang>(detectedLang)
   useEffect(() => {
@@ -1242,8 +1245,9 @@ export function ChatBot() {
       setJarvisText(text)
 
       // STANDBY / WAKE logic — while stopped, SCORPI only listens for a wake word.
-      if (isStopped) {
+      if (isStoppedRef.current) {
         if (isWakeCommand(text)) {
+          isStoppedRef.current = false
           setIsStopped(false)
           setJarvisText("")
           const wakeMsg = getRandomWakeMessage()
@@ -1259,10 +1263,13 @@ export function ChatBot() {
           window.setTimeout(() => startListening(), 800)
           return
         } else {
-          // Not a wake word — stay in standby, keep listening for wake word
+          // Not a wake word — stay in standby, keep listening for wake word.
+          // Block everything: clear input/text, do NOT call handleSend, do NOT set typing.
+          setInput("")
           setJarvisText("")
           setLiveTranscribing(false)
           setTranscribing(false)
+          setTyping(false)
           window.setTimeout(() => startListening(), 800)
           return
         }
@@ -1270,8 +1277,8 @@ export function ChatBot() {
 
       // NORMAL mode: check for stop command
       if (isStopCommand(text)) {
+        isStoppedRef.current = true
         setIsStopped(true)
-        setJarvisText("")
         setTranscribing(false)
         const stopMsg = getRandomStopMessage()
         const userMsg: Message = { from: "user", text }
@@ -1283,7 +1290,29 @@ export function ChatBot() {
         if (ttsEnabled) void speakReply(stopMsg, detectedLangRef.current)
         try { saveStoredHistory(stopMessages) } catch {}
         abortVoiceSession()
-        window.setTimeout(() => startListening(), 800)
+        // Wait for Scorpi's stop message to finish speaking before relistening,
+        // so startListening() → stopSpeaking() never cuts her off mid-sentence.
+        if (ttsEnabled) {
+          await waitForReplyStart()
+          const stopWatch = window.setInterval(() => {
+            const busy =
+              (typeof window !== "undefined" &&
+                "speechSynthesis" in window &&
+                window.speechSynthesis.speaking) ||
+              isPremiumPlaying()
+            if (!busy) {
+              window.clearInterval(stopWatch)
+              window.setTimeout(() => startListening(), 800)
+            }
+          }, 200)
+          // Failsafe: never stay silent longer than 20s even if TTS stalls.
+          window.setTimeout(() => {
+            window.clearInterval(stopWatch)
+            window.setTimeout(() => startListening(), 800)
+          }, 20000)
+        } else {
+          window.setTimeout(() => startListening(), 800)
+        }
         return
       }
 
@@ -1495,8 +1524,9 @@ export function ChatBot() {
     if (!trimmed || typing) return
 
     // STANDBY mode — while stopped, SCORPI only responds to wake words.
-    if (isStopped) {
+    if (isStoppedRef.current) {
       if (isWakeCommand(trimmed)) {
+        isStoppedRef.current = false
         setIsStopped(false)
         const newMessages: Message[] = [...messages, { from: "user", text: trimmed }]
         setInput("")
@@ -1521,6 +1551,7 @@ export function ChatBot() {
 
     // Stop command interception — also works from text input.
     if (isStopCommand(trimmed)) {
+      isStoppedRef.current = true
       setIsStopped(true)
       const newMessages: Message[] = [...messages, { from: "user", text: trimmed }]
       setInput("")
