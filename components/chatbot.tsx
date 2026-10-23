@@ -1260,7 +1260,28 @@ export function ChatBot() {
           setTranscribing(false)
           if (ttsEnabled) void speakReply(wakeMsg, detectedLangRef.current)
           try { saveStoredHistory(wakeMessages) } catch {}
-          window.setTimeout(() => startListening(), 800)
+          // Wait for Scorpi's wake message to finish speaking before relistening,
+          // so startListening() → stopSpeaking() never cuts her off mid-sentence.
+          if (ttsEnabled) {
+            await waitForReplyStart()
+            const wakeWatch = window.setInterval(() => {
+              const busy =
+                (typeof window !== "undefined" &&
+                  "speechSynthesis" in window &&
+                  window.speechSynthesis.speaking) ||
+                isPremiumPlaying()
+              if (!busy) {
+                window.clearInterval(wakeWatch)
+                window.setTimeout(() => startListening(), 800)
+              }
+            }, 200)
+            window.setTimeout(() => {
+              window.clearInterval(wakeWatch)
+              window.setTimeout(() => startListening(), 800)
+            }, 20000)
+          } else {
+            window.setTimeout(() => startListening(), 800)
+          }
           return
         } else {
           // Not a wake word — stay in standby, keep listening for wake word.
@@ -1539,7 +1560,28 @@ export function ChatBot() {
         setTyping(false)
         if (ttsEnabled) void speakReply(wakeMsg, detectedLangRef.current)
         try { saveStoredHistory(wakeMessages) } catch {}
-        window.setTimeout(() => startListening(), 800)
+        // Wait for Scorpi's wake message to finish speaking before relistening,
+        // so startListening() → stopSpeaking() never cuts her off mid-sentence.
+        if (ttsEnabled) {
+          await waitForReplyStart()
+          const wakeWatch = window.setInterval(() => {
+            const busy =
+              (typeof window !== "undefined" &&
+                "speechSynthesis" in window &&
+                window.speechSynthesis.speaking) ||
+              isPremiumPlaying()
+            if (!busy) {
+              window.clearInterval(wakeWatch)
+              window.setTimeout(() => startListening(), 800)
+            }
+          }, 200)
+          window.setTimeout(() => {
+            window.clearInterval(wakeWatch)
+            window.setTimeout(() => startListening(), 800)
+          }, 20000)
+        } else {
+          window.setTimeout(() => startListening(), 800)
+        }
         return
       }
       // Ignore non-wake input while stopped
