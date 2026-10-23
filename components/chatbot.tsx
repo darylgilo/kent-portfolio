@@ -76,6 +76,96 @@ function pickRecorderMime(): string | undefined {
   return RECORDER_MIME_TYPES.find((t) => MediaRecorder.isTypeSupported(t))
 }
 
+/** Words/phrases that tell SCORPI to stop listening and wait for a wake word. */
+const STOP_WORDS = [
+  "stop",
+  "stopp",
+  "okay stop",
+  "okay thats it",
+  "okay that's it",
+  "thats it",
+  "that's it",
+  "okay thanks scorpi",
+  "okay thank you scorpi",
+  "okay thank you",
+  "okay thanks",
+  "stop for a while",
+  "stop for that",
+  "ikaw na mag add ng iba",
+  "mag add ng iba",
+  "gusto ko mag stop muna",
+  "mag stop muna",
+  "stop muna",
+  "hinto",
+  "huwag na",
+  "sige na",
+  "sige na lang",
+  "paki stop"
+]
+
+/** Words/phrases that wake SCORPI from standby. */
+const WAKE_WORDS = [
+  "hi scorpi",
+  "hello scorpi",
+  "wake up scorpi",
+  "wake up",
+  "hey scorpi",
+  "start scorpi",
+  "begin scorpi",
+  "bawi",
+  "usad scorpi",
+  "my name scorpi",
+  "scorpi",
+  "wake",
+  "start"
+]
+
+/** Random stop messages — picked at random so SCORPI doesn't repeat herself. */
+const STOP_MESSAGES = [
+  "Okay, I'll stop for now. Say my name 'Scorpi' to wake me up.",
+  "Alright, I'm pausing for a bit. Just say 'Scorpi' when you want me back.",
+  "Got it — I'll rest now. Say 'Scorpi' to wake me up again.",
+  "I'll go on standby. Whenever you're ready, say 'Scorpi' and I'll be here.",
+  "Okay, taking a break. Wake me up by saying 'Scorpi'.",
+  "Standby mode on. Say 'Scorpi' anytime to bring me back.",
+  "I'll be quiet now. Just call my name 'Scorpi' when you're ready.",
+  "Alright, resting for a while. Wake me up with 'Scorpi'.",
+  "Okay, I'm stepping back. Say 'Scorpi' to wake me.",
+  "I'll stay silent until you say 'Scorpi' to wake me up."
+]
+
+function getRandomStopMessage(): string {
+  return STOP_MESSAGES[Math.floor(Math.random() * STOP_MESSAGES.length)]
+}
+
+/** Random wake-up messages — no "Master", varied each time. */
+const WAKE_MESSAGES = [
+  "I'm here. What would you like to talk about?",
+  "I'm back! What's on your mind?",
+  "Hey, I'm awake. How can I help?",
+  "I'm listening. What do you want to talk about?",
+  "Hello! I'm back and ready to chat.",
+  "I'm here. Go ahead — what's up?",
+  "Back in action. What would you like to discuss?",
+  "I'm awake now. What's on your mind?",
+  "Hey, I'm here. What can I do for you?",
+  "I'm back. What would you like to talk about?"
+]
+
+function getRandomWakeMessage(): string {
+  return WAKE_MESSAGES[Math.floor(Math.random() * WAKE_MESSAGES.length)]
+}
+
+function isStopCommand(text: string): boolean {
+  const t = text.toLowerCase().trim()
+  return STOP_WORDS.some((w) => t.includes(w) || t === w)
+}
+
+function isWakeCommand(text: string): boolean {
+  const t = text.toLowerCase().trim()
+  return WAKE_WORDS.some((w) => t.includes(w) || t === w)
+}
+
 /** ISO 639-1 language Whisper detected for the latest clip ("tl"/"en"). */
 type DetectedLang = "tl" | "en"
 
@@ -772,6 +862,8 @@ export function ChatBot() {
   )
   /** True while Whisper is processing the recorded clip (mic is closed). */
   const [transcribing, setTranscribing] = useState(false)
+  /** True when SCORPI is in standby — mic stays on but only listens for a wake word. */
+  const [isStopped, setIsStopped] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   // Guards the async getUserMedia gap so two rapid restarts can't double-start.
@@ -1140,7 +1232,7 @@ export function ChatBot() {
       detectedLangRef.current = lang
       if (!scorpiOpenRef.current) return
       if (!text) {
-        // Nothing intelligible in the clip — keep listening.
+        // Nothing intelligible in the clip — keep listening for wake word if stopped.
         setJarvisText("")
         setLiveTranscribing(false)
         window.setTimeout(() => startListening(), 250)
@@ -1148,6 +1240,53 @@ export function ChatBot() {
       }
       setInput(text)
       setJarvisText(text)
+
+      // STANDBY / WAKE logic — while stopped, SCORPI only listens for a wake word.
+      if (isStopped) {
+        if (isWakeCommand(text)) {
+          setIsStopped(false)
+          setJarvisText("")
+          const wakeMsg = getRandomWakeMessage()
+          const wakeMessages: Message[] = [...messages, { from: "user", text }, { from: "bot", text: wakeMsg }]
+          setMessages(wakeMessages)
+          setAiReplyText(wakeMsg)
+          setAiOutline([])
+          setLiveTranscribing(false)
+          setTyping(false)
+          setTranscribing(false)
+          if (ttsEnabled) void speakReply(wakeMsg, detectedLangRef.current)
+          try { saveStoredHistory(wakeMessages) } catch {}
+          window.setTimeout(() => startListening(), 800)
+          return
+        } else {
+          // Not a wake word — stay in standby, keep listening for wake word
+          setJarvisText("")
+          setLiveTranscribing(false)
+          setTranscribing(false)
+          window.setTimeout(() => startListening(), 800)
+          return
+        }
+      }
+
+      // NORMAL mode: check for stop command
+      if (isStopCommand(text)) {
+        setIsStopped(true)
+        setJarvisText("")
+        setTranscribing(false)
+        const stopMsg = getRandomStopMessage()
+        const userMsg: Message = { from: "user", text }
+        const stopMessages: Message[] = [...messages, userMsg, { from: "bot", text: stopMsg }]
+        setMessages(stopMessages)
+        setAiReplyText(stopMsg)
+        setAiOutline([])
+        setTyping(false)
+        if (ttsEnabled) void speakReply(stopMsg, detectedLangRef.current)
+        try { saveStoredHistory(stopMessages) } catch {}
+        abortVoiceSession()
+        window.setTimeout(() => startListening(), 800)
+        return
+      }
+
       handleSend(text)
       // Mute while the reply plays — the resume poll unmutes after talking.
       discardTranscriptRef.current = true
@@ -1354,6 +1493,49 @@ export function ChatBot() {
     if (!mediaRecorderRef.current && typing) return
     const trimmed = text.trim()
     if (!trimmed || typing) return
+
+    // STANDBY mode — while stopped, SCORPI only responds to wake words.
+    if (isStopped) {
+      if (isWakeCommand(trimmed)) {
+        setIsStopped(false)
+        const newMessages: Message[] = [...messages, { from: "user", text: trimmed }]
+        setInput("")
+        setJarvisText("")
+        const wakeMsg = getRandomWakeMessage()
+        const wakeMessages: Message[] = [...newMessages, { from: "bot", text: wakeMsg }]
+        setMessages(wakeMessages)
+        setAiReplyText(wakeMsg)
+        setAiOutline([])
+        setTyping(false)
+        if (ttsEnabled) void speakReply(wakeMsg, detectedLangRef.current)
+        try { saveStoredHistory(wakeMessages) } catch {}
+        window.setTimeout(() => startListening(), 800)
+        return
+      }
+      // Ignore non-wake input while stopped
+      setJarvisText("")
+      setAiReplyText("I'm in standby. Say 'Hi Scorpi' to wake me up.")
+      setTyping(false)
+      return
+    }
+
+    // Stop command interception — also works from text input.
+    if (isStopCommand(trimmed)) {
+      setIsStopped(true)
+      const newMessages: Message[] = [...messages, { from: "user", text: trimmed }]
+      setInput("")
+      setJarvisText("")
+      const stopMsg = getRandomStopMessage()
+      const stopMessages: Message[] = [...newMessages, { from: "bot", text: stopMsg }]
+      setMessages(stopMessages)
+      setAiReplyText(stopMsg)
+      setAiOutline([])
+      setTyping(false)
+      if (ttsEnabled) void speakReply(stopMsg, detectedLangRef.current)
+      try { saveStoredHistory(stopMessages) } catch {}
+      return
+    }
+
     const newMessages: Message[] = [...messages, { from: "user", text: trimmed }]
     setMessages(newMessages)
     setInput("")
@@ -1394,7 +1576,7 @@ export function ChatBot() {
       // but only once reply playback has ACTUALLY STARTED and fully ENDED,
       // so the mic never hears the bot's own voice. Waiting on the real TTS
       // start signal (not a fixed timer) removes the READY stall.
-      if (scorpiOpenRef.current) {
+      if (scorpiOpenRef.current && !isStopped) {
         let replyStarted = false
         let resumed = false
         const resume = () => {
@@ -1974,13 +2156,17 @@ export function ChatBot() {
                           </span>
                         )}
                         {scorpiText ||
-                          (listening
+                          (isStopped
                             ? detectedLang === "tl"
-                              ? "Magsalita na — nakikinig ako..."
-                              : "Speak now — I'm listening..."
-                            : detectedLang === "tl"
-                              ? "Nakikinig ako..."
-                              : "I'm listening...")}
+                              ? "Nagpahinga ako. Sabihin mo 'Hi Scorpi' para akong gisingin."
+                              : "I'm resting. Say 'Hi Scorpi' to wake me up."
+                            : listening
+                              ? detectedLang === "tl"
+                                ? "Magsalita na — nakikinig ako..."
+                                : "Speak now — I'm listening..."
+                              : detectedLang === "tl"
+                                ? "Nakikinig ako..."
+                                : "I'm listening...")}
                       </p>
                       {/* Line 2 — Scorpi's answer for that speech (reset each round) */}
                       <p

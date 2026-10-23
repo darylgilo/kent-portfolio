@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     // context window. Everything before this window is dropped.
     type ChatTurn = { role: "user" | "assistant"; content: string };
     const history: ChatTurn[] = (Array.isArray(messages) ? messages : [])
-      .slice(-16)
+      .slice(-24)
       .map((m: { role?: unknown; content?: unknown }): ChatTurn | null => {
         const role =
           m?.role === "user" || m?.role === "assistant" ? (m.role as ChatTurn["role"]) : null;
@@ -106,6 +106,8 @@ Certificates: ${CERTIFICATES.map((c) => `${c.name} by ${c.issuer}`).join(", ")}
 Contact: Email ${SOCIALS.email}, GitHub ${SOCIALS.github}, LinkedIn ${SOCIALS.linkedin}, Facebook ${SOCIALS.facebook}
 
 CONVERSATION MEMORY: You remember details the user shared earlier in THIS same conversation (e.g. names, places, preferences, prior answers you gave) — use them naturally to answer follow-up questions like "anong island yun" or "sino nga yun".
+
+FOLLOW-UP RULES: If the user says a short affirmative word like "go", "yes", "sige", "ok", "continue", "tuloy", "more", or "proceed", treat it as agreement to continue the IMMEDIATELY PRECEDING topic or question — do NOT start a new topic. Refer back to what you were last discussing (e.g. if you just asked "would you like to add more details for this topic?" and they say "go", give more details on THAT same topic).
 
 RESPONSE FORMAT — respond with ONLY one JSON object (no code fences, no extra text), shaped exactly like:
 {"reply": "...", "outline": [...]}
