@@ -108,7 +108,6 @@ export const QUOTES: string[] = [
   "Building a web app isn't just clicking a few buttons—it’s negotiating with servers, fighting CSS layouts, and convincing the database to behave.",
   "Making a web app look easy to use is the hardest part of building it.",
   "Where creative imagination meets strict logical execution.",
-  "Making tech work so gracefully that people think it’s simple, sana parehas tayo ng nararamdaman diba.",
   "Making tech work so gracefully that people think it’s simple—behind every 'easy' feature is our sweat, logic, and endless caffeine.",
 ]
 

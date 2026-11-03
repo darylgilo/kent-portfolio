@@ -2090,6 +2090,80 @@ export function ChatBot() {
                     className="h-full w-full"
                   />
                 </div>
+
+                <style>
+                  {`
+                    @keyframes scorpi-run-1 {
+                      from { offset-distance: 0%; }
+                      to { offset-distance: 100%; }
+                    }
+                    @keyframes scorpi-run-2 {
+                      from { offset-distance: 0%; }
+                      to { offset-distance: 100%; }
+                    }
+                    @keyframes scorpi-run-3 {
+                      from { offset-distance: 0%; }
+                      to { offset-distance: 100%; }
+                    }
+                  `}
+                </style>
+
+                {/* Electrons orbiting the core circle */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  {[
+                    { w: 360, h: 300, rot: 20, dur: 14, rev: false },
+                    { w: 460, h: 360, rot: -35, dur: 20, rev: true },
+                    { w: 480, h: 350, rot: 50, dur: 26, rev: false },
+                  ].map((o, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        width: o.w,
+                        height: o.h,
+                        border: `1px solid rgba(125, 211, 252, 0.16)`,
+                        borderRadius: "50%",
+                        boxSizing: "border-box",
+                        transform: `translate(-50%, -50%) rotate(${o.rot}deg)`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: "50%",
+                          width: o.w,
+                          height: o.h,
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            background: "#7dd3fc",
+                            boxShadow:
+                              "0 0 12px #7dd3fc, 0 0 24px rgba(125, 211, 252, 0.6)",
+                            offsetPath: "ellipse(50% 50%)",
+                            offsetAnchor: "50% 50%",
+                            offsetDistance: "0%",
+                            animation: `scorpi-run-${i + 1} ${o.dur}s linear infinite ${
+                              o.rev ? "reverse" : "normal"
+                            }`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 {scorpiOpen && (
                   <svg
                     aria-hidden="true"
