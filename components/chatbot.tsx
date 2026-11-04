@@ -91,17 +91,7 @@ const STOP_WORDS = [
   "okay thank you",
   "okay thanks",
   "stop for a while",
-  "stop for that",
-  "ikaw na mag add ng iba",
-  "mag add ng iba",
-  "gusto ko mag stop muna",
-  "mag stop muna",
-  "stop muna",
-  "hinto",
-  "huwag na",
-  "sige na",
-  "sige na lang",
-  "paki stop"
+  "stop for that"
 ]
 
 /** Random welcome messages shown when SCORPI opens — no "master", no "personal assistant". */
@@ -125,8 +115,6 @@ const WAKE_WORDS = [
   "hey scorpi",
   "start scorpi",
   "begin scorpi",
-  "bawi",
-  "usad scorpi",
   "my name scorpi",
   "scorpi",
   "wake",
@@ -766,6 +754,93 @@ function findAnswer(input: string): string {
     }
   }
   return best ? best.answer : FALLBACK
+}
+
+/** Hidden client-side commands — no AI API call needed. Triggered by typing
+ *  the command in the chatbox. Responds in the same language the user used. */
+function checkHiddenCommand(text: string): string | null {
+  const t = text.toLowerCase().trim()
+
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString("en-PH", { hour12: true, hour: "2-digit", minute: "2-digit" })
+
+  // ── Browser time (command or natural language) ──
+  if (
+    t === "/time" ||
+    t === "!time" ||
+    t === "/oras" ||
+    t === "!oras" ||
+    t.includes("what time") ||
+    t.includes("current time") ||
+    t.includes("what's the time") ||
+    t.includes("tell me the time")
+  ) {
+    return ` TIME: ${timeStr}`
+  }
+
+  // ── Date (command or natural language) ──
+  if (
+    t === "/date" ||
+    t === "!date" ||
+    t === "/petsa" ||
+    t === "!petsa" ||
+    t.includes("what date") ||
+    t.includes("today's date") ||
+    t.includes("what is the date") ||
+    t.includes("what's the date")
+  ) {
+    const now = new Date()
+    return `DATE: ${now.toLocaleDateString("en-PH", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })}`
+  }
+
+  // ── Calendar (command or natural language) ──
+  if (
+    t === "/calendar" ||
+    t === "!calendar" ||
+    t === "/kalendaryo" ||
+    t === "!kalendaryo" ||
+    t.includes("calendar today") ||
+    t.includes("what is the calendar") ||
+    t.includes("what's the calendar")
+  ) {
+    const now = new Date()
+    return `📅 CALENDAR: ${now.toLocaleDateString("en-PH", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    })}\nNo events scheduled for now. Add an event if you'd like!`
+  }
+
+  // ── List all hidden commands ──
+  if (t === "/help" || t === "!help" || t === "/tulong" || t === "!tulong") {
+    return `🔧 HIDDEN COMMANDS (type any of these in chat):
+• /time — Browser time
+• /date — Today's date
+• /calendar — Calendar
+• /clear — Clear the whole chat history
+• /status — SCORPI system status`
+  }
+
+  // ── Clear chat ──
+  if (t === "/clear" || t === "!clear") {
+    return "__CLEAR__"
+  }
+
+  // ── System status ──
+  if (t === "/status" || t === "!status") {
+    return `SYSTEM STATUS:
+Online: Yes
+Mode: Voice + Text
+Language: EN
+AI assistant: Scorpi`
+  }
+
+  return null
 }
 
 /** Opening line shown when there is no stored conversation yet. */
@@ -1639,6 +1714,34 @@ export function ChatBot() {
       setTyping(false)
       if (ttsEnabled) void speakReply(stopMsg, detectedLangRef.current)
       try { saveStoredHistory(stopMessages) } catch {}
+      return
+    }
+
+    // Hidden client-side commands — checked before the AI API call.
+    const hiddenReply = checkHiddenCommand(trimmed)
+    if (hiddenReply) {
+      const newMessages: Message[] = [...messages, { from: "user", text: trimmed }]
+      setInput("")
+      setJarvisText("")
+      setAiOutline([])
+      setLiveTranscribing(false)
+      setTyping(true)
+
+      // /clear resets the whole chat
+      const t = trimmed.toLowerCase().trim()
+      if (t === "/clear" || t === "!clear") {
+        setMessages([])
+        setAiReplyText("")
+        setTyping(false)
+        try { saveStoredHistory([]) } catch {}
+        return
+      }
+
+      setMessages((prev) => [...prev, { from: "bot", text: hiddenReply }])
+      setAiReplyText(hiddenReply)
+      if (ttsEnabled) void speakReply(hiddenReply, detectedLangRef.current)
+      try { saveStoredHistory([...newMessages, { from: "bot", text: hiddenReply }]) } catch {}
+      setTyping(false)
       return
     }
 
