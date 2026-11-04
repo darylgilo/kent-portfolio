@@ -6,7 +6,8 @@ import dynamic from "next/dynamic"
 import "./CrystalizedBall.css"
 import ScorpioBackground from "./ScorpioBackground"
 import { Lottie } from "lottie-react"
-import { FaRobot, FaPaperPlane, FaTimes, FaSmile, FaVolumeUp, FaVolumeOff, FaMicrophone, FaRedo } from "react-icons/fa"
+import { AudioLines } from "lucide-react"
+import { FaRobot, FaPaperPlane, FaTimes, FaSmile, FaVolumeUp, FaVolumeOff, FaRedo } from "react-icons/fa"
 
 type CrystalizedBallProps = {
   preset?: string
@@ -101,6 +102,18 @@ const STOP_WORDS = [
   "sige na",
   "sige na lang",
   "paki stop"
+]
+
+/** Random welcome messages shown when SCORPI opens — no "master", no "personal assistant". */
+const WELCOME_MESSAGES = [
+  "Welcome! I'm SCORPI. What would you like to talk about?",
+  "Hi there! I'm SCORPI. How can I help you today?",
+  "Welcome! Ask me anything — I'm listening.",
+  "Hi! I'm SCORPI. What's on your mind?",
+  "Welcome! Ready to chat. What would you like to know?",
+  "Hello! I'm SCORPI. What can I do for you?",
+  "Welcome! What would you like to talk about?",
+  "Hi! I'm SCORPI. What brings you here today?",
 ]
 
 /** Words/phrases that wake SCORPI from standby. */
@@ -836,8 +849,21 @@ export function ChatBot() {
   const [listening, setListening] = useState(false)
   /** SCORPI overlay: opened from the mic button; hides robot + chatbox. */
   const [scorpiOpen, setJarvisOpen] = useState(false)
+  // Responsive scale for the ScorpioBackground constellation — smaller on mobile.
+  const [windowWidth, setWindowWidth] = useState(
+    () => (typeof window !== "undefined" ? window.innerWidth : 768)
+  )
+  const isMobile = windowWidth < 768
+
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
   /** Live transcript text shown under the ball. */
   const [scorpiText, setJarvisText] = useState("")
+  /** True when scorpiText holds a SCORPI welcome message (not user speech). */
+  const [isScorpiWelcome, setIsScorpiWelcome] = useState(false)
   /** AI answer line shown below the user's speech (reset per exchange). */
   const [aiReplyText, setAiReplyText] = useState("")
   /** Structured list from the AI (fundamentals/steps) for the left HUD panel. */
@@ -1219,6 +1245,7 @@ export function ChatBot() {
     // "…" shows in the You line while Whisper thinks — there are no live
     // words anymore now that transcription happens after the clip ends.
     setJarvisText("…")
+    setIsScorpiWelcome(false)
     setLiveTranscribing(true)
     try {
       const fd = new FormData()
@@ -1243,6 +1270,7 @@ export function ChatBot() {
       }
       setInput(text)
       setJarvisText(text)
+      setIsScorpiWelcome(false)
 
       // STANDBY / WAKE logic — while stopped, SCORPI only listens for a wake word.
       if (isStoppedRef.current) {
@@ -1482,6 +1510,7 @@ export function ChatBot() {
               speechStartedAt = now
               // Flip the seesaw to the "You" line while the clip records.
               setJarvisText("…")
+              setIsScorpiWelcome(false)
               setLiveTranscribing(true)
             }
             lastLoudAt = now
@@ -1514,6 +1543,10 @@ export function ChatBot() {
     setLiveTranscribing(false)
     scorpiOpenRef.current = true
     setJarvisOpen(true)
+    // Pick a random welcome message so visitors aren't greeted with "master" or "personal assistant".
+    const welcome = WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)]
+    setJarvisText(welcome)
+    setIsScorpiWelcome(true)
     // Let the overlay paint before asking for mic permission.
     window.setTimeout(() => startListening(), 60)
   }
@@ -1878,7 +1911,7 @@ export function ChatBot() {
                     border: "1px solid var(--border-color)",
                   }}
                 >
-                  <FaMicrophone />
+                  <AudioLines className="w-5 h-5" />
                 </button>
               )}
               <button
@@ -1914,7 +1947,7 @@ export function ChatBot() {
               className="pointer-events-none"
               style={{ position: "absolute", inset: 0, zIndex: 0 }}
             >
-              <ScorpioBackground animated scale={1.75} />
+              <ScorpioBackground animated scale={isMobile ? 1.75 : 2.5} />
             </div>
             <button
               type="button"
@@ -2032,7 +2065,7 @@ export function ChatBot() {
                 SCORPI AI
               </div>
               <div
-                className="mt-2 text-2xl font-bold uppercase text-white"
+                className="mt-2 text-lg font-medium uppercase text-white"
                 style={{ letterSpacing: "0.12em" }}
               >
                 {speaking
@@ -2047,7 +2080,7 @@ export function ChatBot() {
               </div>
 
               <div
-                className={`relative mt-10 h-72 w-72 sm:h-80 sm:w-80 ${speaking ? "scorpi-orb-talking" : ""}`}
+                className={`relative mt-10 h-56 w-56 sm:h-72 sm:w-72 ${speaking ? "scorpi-orb-talking" : ""}`}
                 style={{
                   // Breathing glow eases via CSS transition (no snap when the
                   // talk level jumps frame to frame).
@@ -2114,9 +2147,9 @@ export function ChatBot() {
                   style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
                 >
                   {[
-                    { w: 360, h: 300, rot: 20, dur: 14, rev: false },
-                    { w: 460, h: 360, rot: -35, dur: 20, rev: true },
-                    { w: 480, h: 350, rot: 50, dur: 26, rev: false },
+                    { w: isMobile ? 210 : 360, h: isMobile ? 170 : 300, rot: 20, dur: 14, rev: false },
+                    { w: isMobile ? 270 : 460, h: isMobile ? 210 : 360, rot: -35, dur: 20, rev: true },
+                    { w: isMobile ? 280 : 480, h: isMobile ? 200 : 350, rot: 50, dur: 26, rev: false },
                   ].map((o, i) => (
                     <div
                       key={i}
@@ -2299,7 +2332,7 @@ export function ChatBot() {
                       <p aria-live="polite" className="min-h-5 text-slate-300">
                         {scorpiText && (
                           <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                            You
+                            {isScorpiWelcome ? "Scorpi" : "You"}
                           </span>
                         )}
                         {scorpiText ||
